@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Medipulse | Interaktive Weltkarte</title>
+<link rel="stylesheet" href="vendor/maplibre-gl/maplibre-gl.css" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <span class="brand-name">Medipulse</span>
+      <span class="brand-sub">Interaktive Ärzte-Weltkarte</span>
+    </div>
+
+    <div class="stats" id="stats">
+      <div class="stat"><span class="stat-value" id="stat-total">0</span><span class="stat-label">Ärzte gesamt</span></div>
+      <div class="stat status-kunde"><span class="stat-value" id="stat-kunde">0</span><span class="stat-label">Kunden</span></div>
+      <div class="stat status-interessent"><span class="stat-value" id="stat-interessent">0</span><span class="stat-label">Interessenten</span></div>
+      <div class="stat status-lead"><span class="stat-value" id="stat-lead">0</span><span class="stat-label">Leads</span></div>
+    </div>
+
+    <button id="sidebar-toggle" class="icon-btn" title="Liste ein-/ausblenden">☰</button>
+  </header>
+
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-section">
+        <input type="text" id="search" placeholder="Suche nach Name, Stadt, Fachrichtung…" />
+      </div>
+
+      <div class="sidebar-section filters">
+        <label class="chip chip-kunde"><input type="checkbox" data-status="kunde" checked> Kunde</label>
+        <label class="chip chip-interessent"><input type="checkbox" data-status="interessent" checked> Interessent</label>
+        <label class="chip chip-lead"><input type="checkbox" data-status="lead" checked> Lead</label>
+        <label class="chip chip-inaktiv"><input type="checkbox" data-status="inaktiv" checked> Inaktiv</label>
+      </div>
+
+      <div class="sidebar-section list-wrap">
+        <ul id="doctor-list" class="doctor-list"></ul>
+      </div>
+    </aside>
+
+    <main class="map-wrap">
+      <div id="map"></div>
+
+      <div class="map-controls-extra">
+        <button id="rotate-toggle" class="pill-btn" title="Automatische Rotation ein/aus">
+          <span id="rotate-icon">⏸</span> Rotation
+        </button>
+      </div>
+
+      <div class="legend">
+        <div class="legend-title">Legende</div>
+        <div class="legend-item"><span class="dot dot-kunde"></span> Kunde</div>
+        <div class="legend-item"><span class="dot dot-interessent"></span> Interessent</div>
+        <div class="legend-item"><span class="dot dot-lead"></span> Lead</div>
+        <div class="legend-item"><span class="dot dot-inaktiv"></span> Inaktiv</div>
+      </div>
+    </main>
+  </div>
+
+  <script src="vendor/maplibre-gl/maplibre-gl.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
