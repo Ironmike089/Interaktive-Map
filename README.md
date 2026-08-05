@@ -65,8 +65,8 @@ Kontakt). Ob ein Arzt tatsächlich Kunde/Interessent ist, müsst ihr separat aus
 eurem CRM einspielen (z. B. per `id`-Abgleich) — dafür gibt es aktuell noch
 keine Automatik.
 
-**Aktueller Stand:** Teil 1/3 ist eingespielt (**102.684 Praxen/Ärzte**,
-Deutschland). Teil 2 und 3 folgen und werden nach Lieferung genauso verarbeitet.
+**Aktueller Stand:** Teil 1+2/3 sind eingespielt (**205.340 Praxen/Ärzte**,
+Deutschland). Teil 3 folgt und wird nach Lieferung genauso verarbeitet.
 
 **Performance-Hinweis:** Bei >300 Treffern zeigt die Seitenliste nur die
 ersten 300 an (mit Hinweis auf die Anzahl der ausgeblendeten Treffer) — die
