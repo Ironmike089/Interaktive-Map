@@ -88,11 +88,14 @@ function getFilteredData() {
   });
 }
 
+// Start zentriert auf Deutschland (die Ärzte-Daten sind aktuell fast
+// ausschließlich dort) statt einer Weltraum-Ansicht — die lässt sich per
+// GlobeControl/Herauszoomen trotzdem jederzeit erreichen.
 const map = new maplibregl.Map({
   container: "map",
   style: "https://tiles.openfreemap.org/styles/liberty",
-  center: [10, 35],
-  zoom: 1.6,
+  center: [10.45, 51.16],
+  zoom: 5.4,
   pitch: 0,
   attributionControl: { compact: true },
 });
@@ -102,6 +105,12 @@ map.addControl(new maplibregl.FullscreenControl(), "top-right");
 map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
 if (typeof maplibregl.GlobeControl === "function") {
   map.addControl(new maplibregl.GlobeControl(), "top-right");
+}
+
+// Zwei-Finger-Geste soll NUR zoomen, nicht gleichzeitig drehen — sonst
+// fühlt sich Pinch-Zoom auf Touch-Geräten "kaputt"/unvorhersehbar an.
+if (map.touchZoomRotate && typeof map.touchZoomRotate.disableRotation === "function") {
+  map.touchZoomRotate.disableRotation();
 }
 
 let popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "300px" });
@@ -166,7 +175,29 @@ function setLoadingState(loading) {
   }
 }
 
+function createPinIcon() {
+  const size = 64;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#000000";
+  // Kreis (Kopf der Pin-Form)
+  ctx.beginPath();
+  ctx.arc(size / 2, size * 0.36, size * 0.26, 0, Math.PI * 2);
+  ctx.fill();
+  // Spitze (Dreieck) darunter
+  ctx.beginPath();
+  ctx.moveTo(size * 0.28, size * 0.42);
+  ctx.lineTo(size * 0.72, size * 0.42);
+  ctx.lineTo(size * 0.5, size * 0.92);
+  ctx.closePath();
+  ctx.fill();
+  return ctx.getImageData(0, 0, size, size);
+}
+
 function setupMapLayers() {
+  map.addImage("pin-icon", createPinIcon(), { sdf: true });
+
   map.addSource("aerzte", {
     type: "geojson",
     data: toGeoJSON(getFilteredData()),
@@ -204,11 +235,18 @@ function setupMapLayers() {
 
   map.addLayer({
     id: "unclustered-point",
-    type: "circle",
+    type: "symbol",
     source: "aerzte",
     filter: ["!", ["has", "point_count"]],
+    layout: {
+      "icon-image": "pin-icon",
+      "icon-size": ["interpolate", ["linear"], ["zoom"], 5, 0.32, 12, 0.55, 16, 0.75],
+      "icon-anchor": "bottom",
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
+    },
     paint: {
-      "circle-color": [
+      "icon-color": [
         "match",
         ["get", "status"],
         "kunde", STATUS_COLORS.kunde,
@@ -217,9 +255,8 @@ function setupMapLayers() {
         "inaktiv", STATUS_COLORS.inaktiv,
         "#ffffff",
       ],
-      "circle-radius": 8,
-      "circle-stroke-width": 2,
-      "circle-stroke-color": "#ffffff",
+      "icon-halo-color": "#ffffff",
+      "icon-halo-width": 1.2,
     },
   });
 
