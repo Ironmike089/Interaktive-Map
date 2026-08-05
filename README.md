@@ -39,40 +39,73 @@ Für die Kartenkacheln wird eine Internetverbindung benötigt (OpenFreeMap).
   Routen-Link
 - 📊 Live-Statistik-Leiste oben (Anzahl je Status)
 
-## Eigene Ärzte-Daten einpflegen
+## Echte Ärzte-Daten (AOK-Import)
 
-Die Beispieldaten liegen in [`js/data.js`](js/data.js) im Array
-`AERZTE_DATA`. Jeder Eintrag braucht mindestens:
+Die App lädt echte Daten aus `data/aerzte-teil1.json.gz`,
+`data/aerzte-teil2.json.gz`, `data/aerzte-teil3.json.gz` (gzip-komprimiert,
+per `fetch()` + `DecompressionStream` im Browser entpackt — spart ca. 80%
+Dateigröße gegenüber reinem JSON). Fehlende Teile werden beim Laden
+stillschweigend übersprungen; sind **keine** Teile vorhanden, springt die App
+auf die Beispieldaten aus [`js/data.js`](js/data.js) zurück.
+
+Diese Dateien werden aus den gelieferten AOK-CSV-Exporten erzeugt:
+
+```bash
+python3 scripts/csv_to_json.py <CSV-Datei> data/aerzte-teilN.json.gz
+# mehrere CSVs zu einer Datei zusammenführen:
+python3 scripts/csv_to_json.py teil1.csv teil2.csv data/aerzte-teil1.json.gz
+```
+
+Das Skript entfernt Duplikate (per `id`), überspringt Zeilen ohne
+Koordinaten und mappt die AOK-Spalten auf unser Schema (siehe unten).
+
+**Wichtig — Status-Feld:** Die AOK-Liste enthält keine CRM-Beziehung, daher
+bekommt jeder importierte Eintrag aktuell den Status `"lead"` (unklassifizierter
+Kontakt). Ob ein Arzt tatsächlich Kunde/Interessent ist, müsst ihr separat aus
+eurem CRM einspielen (z. B. per `id`-Abgleich) — dafür gibt es aktuell noch
+keine Automatik.
+
+**Aktueller Stand:** Teil 1/3 ist eingespielt (**102.684 Praxen/Ärzte**,
+Deutschland). Teil 2 und 3 folgen und werden nach Lieferung genauso verarbeitet.
+
+**Performance-Hinweis:** Bei >300 Treffern zeigt die Seitenliste nur die
+ersten 300 an (mit Hinweis auf die Anzahl der ausgeblendeten Treffer) — die
+Karte selbst zeigt weiterhin alle passenden Punkte über Clustering an, nur
+das Rendern von hunderttausenden Listen-Einträgen im DOM würde den Browser
+ausbremsen.
+
+### Datenschema
 
 ```js
 {
-  id: 1,
-  name: "Praxis Mustermann",
-  fachrichtung: "Allgemeinmedizin",
-  strasse: "Musterstraße 1",
-  plz: "12345",
-  stadt: "Musterstadt",
+  id: 182480,
+  name: "Berno Christian Albus",
+  fachrichtung: "Orthopädie und Unfallchirurgie",
+  einrichtung: "HELIOS Medizinisches Versorgungszentrum Lengerich",
+  kette: "Helios",              // Praxiskette/Konzern, falls vorhanden
+  strasse: "Kirchplatz 9",
+  plz: "49525",
+  stadt: "Lengerich",
   land: "Deutschland",
-  lat: 52.5200,
-  lng: 13.4050,
-  status: "kunde", // "kunde" | "interessent" | "lead" | "inaktiv"
-  ansprechpartner: "Dr. Max Mustermann",
-  telefon: "+49 30 0000000",
-  email: "kontakt@praxis.de",
-  notizen: "",
+  lat: 52.189816,
+  lng: 7.851624,
+  status: "lead",                // "kunde" | "interessent" | "lead" | "inaktiv"
+  ansprechpartner: "Berno Christian Albus",
+  telefon: "+49548198886",
+  email: "",
+  website: "https://...",
+  notizen: "Teil von Helios (Fresenius Helios) · MVZ",
 }
 ```
 
-Koordinaten (lat/lng) lassen sich kostenlos ermitteln über
-[Nominatim](https://nominatim.openstreetmap.org/) (OpenStreetMap-Suche) oder
-Google Maps (Rechtsklick auf einen Ort → Koordinaten kopieren).
-
-Wenn ihr eine größere Liste (Excel/CSV/CRM-Export) habt, kann daraus auch ein
-automatischer Import gebaut werden, statt die Daten von Hand einzutragen.
+Für **manuell** ergänzte Einzeleinträge (z. B. eigene Testdaten) funktioniert
+weiterhin das gleiche Schema direkt in `js/data.js` als Fallback.
 
 ## Nächste mögliche Schritte
 
-- Anbindung an eine echte Datenquelle/API statt der statischen `data.js`
+- Teil 2/3 der AOK-Daten einspielen, sobald geliefert
+- Echten CRM-Status (Kunde/Interessent) mit den AOK-Datensätzen abgleichen
 - Rollen/Gebiete pro Vertriebler farblich abgrenzen
 - Umsatz-/Potenzial-Kennzahlen pro Praxis im Popup
-- Deployment z. B. via GitHub Pages für einen teilbaren Link
+- Deployment z. B. via GitHub Pages für einen teilbaren Link (Hinweis: aktuell
+  privates Repo — Pages bräuchte einen bezahlten Plan oder ein öffentliches Repo)

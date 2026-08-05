@@ -25,6 +25,44 @@ let userInteracting = false;
 let rotateFrame = null;
 let selectedId = null;
 
+let AERZTE_DATA = [];
+const MAX_LIST_ITEMS = 300;
+
+// Echte Ärzte-Daten liegen gzip-komprimiert unter data/aerzte-teil*.json.gz
+// (siehe scripts/csv_to_json.py). Fehlende Teile (noch nicht geliefert) werden
+// stillschweigend übersprungen; ohne jeden Teil greift die Beispiel-Liste aus
+// js/data.js.
+const DATA_PARTS = ["data/aerzte-teil1.json.gz", "data/aerzte-teil2.json.gz", "data/aerzte-teil3.json.gz"];
+
+async function fetchGzipJSON(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+  const stream = res.body.pipeThrough(new DecompressionStream("gzip"));
+  return JSON.parse(await new Response(stream).text());
+}
+
+async function loadAerzteData() {
+  const results = await Promise.allSettled(DATA_PARTS.map(fetchGzipJSON));
+  const merged = [];
+  const seen = new Set();
+  results.forEach((r, i) => {
+    if (r.status !== "fulfilled") {
+      console.info(`Kein Datensatz unter ${DATA_PARTS[i]} gefunden (noch nicht geliefert?).`);
+      return;
+    }
+    for (const d of r.value) {
+      if (seen.has(d.id)) continue;
+      seen.add(d.id);
+      merged.push(d);
+    }
+  });
+  if (merged.length === 0 && typeof SAMPLE_AERZTE_DATA !== "undefined") {
+    console.info("Keine echten Ärztedaten gefunden — nutze Beispieldaten.");
+    return SAMPLE_AERZTE_DATA;
+  }
+  return merged;
+}
+
 function toGeoJSON(data) {
   return {
     type: "FeatureCollection",
@@ -66,7 +104,26 @@ if (typeof maplibregl.GlobeControl === "function") {
   map.addControl(new maplibregl.GlobeControl(), "top-right");
 }
 
-let popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "280px" });
+let popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "300px" });
+
+let mapReady = false;
+let dataReady = false;
+
+function maybeInit() {
+  if (mapReady && dataReady) setupMapLayers();
+}
+
+setLoadingState(true);
+loadAerzteData().then((data) => {
+  AERZTE_DATA = data;
+  dataReady = true;
+  setLoadingState(false);
+  // Liste/Statistik sofort anzeigen, unabhängig davon ob die Kartenkacheln
+  // (externe Netzwerkabfrage) schon geladen sind.
+  renderList();
+  updateStats();
+  maybeInit();
+});
 
 map.on("load", () => {
   // Globus-Projektion aktivieren: beim Herauszoomen erscheint eine Weltkugel,
@@ -91,6 +148,25 @@ map.on("load", () => {
     }
   }
 
+  mapReady = true;
+  maybeInit();
+});
+
+function setLoadingState(loading) {
+  const search = document.getElementById("search");
+  const list = document.getElementById("doctor-list");
+  const checkboxes = document.querySelectorAll('.filters input[type="checkbox"]');
+  search.disabled = loading;
+  checkboxes.forEach((cb) => (cb.disabled = loading));
+  if (loading) {
+    search.placeholder = "Lade Ärztedaten …";
+    list.innerHTML = `<li class="doctor-list-hint">Ärztedaten werden geladen …</li>`;
+  } else {
+    search.placeholder = "Suche nach Name, Stadt, Fachrichtung…";
+  }
+}
+
+function setupMapLayers() {
   map.addSource("aerzte", {
     type: "geojson",
     data: toGeoJSON(getFilteredData()),
@@ -167,10 +243,8 @@ map.on("load", () => {
     map.on("mouseleave", layer, () => (map.getCanvas().style.cursor = ""));
   });
 
-  renderList();
-  updateStats();
   startAutoRotate();
-});
+}
 
 function refreshSource() {
   const src = map.getSource("aerzte");
@@ -182,10 +256,12 @@ function openDoctorPopup(d, coords) {
   const html = `
     <div class="popup-title">${escapeHtml(d.name)}</div>
     <div class="popup-sub">${escapeHtml(d.fachrichtung)} · ${escapeHtml(d.stadt)}, ${escapeHtml(d.land)}</div>
+    ${d.einrichtung ? `<div class="popup-row">🏥 ${escapeHtml(d.einrichtung)}${d.kette ? ` <span style="color:var(--text-dim)">(${escapeHtml(d.kette)})</span>` : ""}</div>` : ""}
     <div class="popup-row">📍 ${escapeHtml(d.strasse)}, ${escapeHtml(d.plz)} ${escapeHtml(d.stadt)}</div>
-    ${d.ansprechpartner ? `<div class="popup-row">👤 ${escapeHtml(d.ansprechpartner)}</div>` : ""}
+    ${d.ansprechpartner && d.ansprechpartner !== d.name ? `<div class="popup-row">👤 ${escapeHtml(d.ansprechpartner)}</div>` : ""}
     ${d.telefon ? `<div class="popup-row">📞 ${escapeHtml(d.telefon)}</div>` : ""}
     ${d.email ? `<div class="popup-row">✉️ ${escapeHtml(d.email)}</div>` : ""}
+    ${d.website ? `<div class="popup-row">🔗 <a href="${escapeHtml(d.website)}" target="_blank" rel="noopener">${escapeHtml(d.website.replace(/^https?:\/\//, ""))}</a></div>` : ""}
     ${d.notizen ? `<div class="popup-row" style="color:var(--text-dim)">📝 ${escapeHtml(d.notizen)}</div>` : ""}
     <div class="popup-actions">
       ${d.telefon ? `<a href="tel:${escapeHtml(d.telefon)}">Anrufen</a>` : ""}
@@ -217,10 +293,18 @@ function selectDoctor(id, flyTo = true) {
 }
 
 function renderList() {
+  if (!dataReady) return;
   const list = document.getElementById("doctor-list");
   const data = getFilteredData();
   list.innerHTML = "";
-  data.forEach((d) => {
+
+  if (data.length === 0) {
+    list.innerHTML = `<li class="doctor-list-hint">Keine Treffer.</li>`;
+    return;
+  }
+
+  const shown = data.length > MAX_LIST_ITEMS ? data.slice(0, MAX_LIST_ITEMS) : data;
+  shown.forEach((d) => {
     const li = document.createElement("li");
     li.className = "doctor-item";
     li.dataset.id = d.id;
@@ -230,18 +314,27 @@ function renderList() {
         <span class="doctor-name">${escapeHtml(d.name)}</span>
       </div>
       <div class="doctor-meta">${escapeHtml(d.fachrichtung)} · ${escapeHtml(d.stadt)}, ${escapeHtml(d.land)}</div>
+      ${d.einrichtung ? `<div class="doctor-meta doctor-einrichtung">${escapeHtml(d.einrichtung)}</div>` : ""}
     `;
     li.addEventListener("click", () => selectDoctor(d.id, true));
     list.appendChild(li);
   });
+
+  if (data.length > MAX_LIST_ITEMS) {
+    const hint = document.createElement("li");
+    hint.className = "doctor-list-hint";
+    hint.textContent = `${(data.length - MAX_LIST_ITEMS).toLocaleString("de-DE")} weitere Treffer ausgeblendet — bitte Suche/Filter eingrenzen.`;
+    list.appendChild(hint);
+  }
 }
 
 function updateStats() {
   const data = getFilteredData();
-  document.getElementById("stat-total").textContent = data.length;
-  document.getElementById("stat-kunde").textContent = data.filter((d) => d.status === "kunde").length;
-  document.getElementById("stat-interessent").textContent = data.filter((d) => d.status === "interessent").length;
-  document.getElementById("stat-lead").textContent = data.filter((d) => d.status === "lead").length;
+  const fmt = (n) => n.toLocaleString("de-DE");
+  document.getElementById("stat-total").textContent = fmt(data.length);
+  document.getElementById("stat-kunde").textContent = fmt(data.filter((d) => d.status === "kunde").length);
+  document.getElementById("stat-interessent").textContent = fmt(data.filter((d) => d.status === "interessent").length);
+  document.getElementById("stat-lead").textContent = fmt(data.filter((d) => d.status === "lead").length);
 }
 
 function applyFilters() {
@@ -250,9 +343,13 @@ function applyFilters() {
   updateStats();
 }
 
+let searchDebounceTimer = null;
 document.getElementById("search").addEventListener("input", (e) => {
   searchTerm = e.target.value;
-  applyFilters();
+  // Bei großen Datenmengen (100k+ Punkte) ist ein Re-Clustering pro
+  // Tastendruck spürbar träge — daher kurz entprellen.
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(applyFilters, 200);
 });
 
 document.querySelectorAll('.filters input[type="checkbox"]').forEach((cb) => {

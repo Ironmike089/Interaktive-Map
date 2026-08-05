@@ -1,8 +1,10 @@
 /**
- * Ärzte-Datensatz für die Medipulse Interaktive Weltkarte.
+ * Fallback-Beispieldaten für die Medipulse Interaktive Weltkarte.
  *
- * Dies sind BEISPIELDATEN zur Demonstration. Ersetze das Array unten
- * mit euren echten Ärzte-Daten. Jedes Objekt braucht mindestens:
+ * Wird nur genutzt, wenn keine echten Daten unter data/aerzte-teil*.json.gz
+ * gefunden werden (siehe js/app.js -> loadAerzteData()). Die echten AOK-Daten
+ * werden über scripts/csv_to_json.py aus den gelieferten CSV-Exporten erzeugt.
+ * Jedes Objekt braucht mindestens:
  *
  *   id          – eindeutige ID (Zahl oder String)
  *   name        – Name der Praxis / des Arztes
@@ -23,7 +25,7 @@
  * dir einen Import, der die Liste automatisch in dieses Format bringt.
  */
 
-const AERZTE_DATA = [
+const SAMPLE_AERZTE_DATA = [
   { id: 1, name: "Praxis Dr. Hoffmann", fachrichtung: "Allgemeinmedizin", strasse: "Friedrichstraße 12", plz: "10117", stadt: "Berlin", land: "Deutschland", lat: 52.5200, lng: 13.4050, status: "kunde", ansprechpartner: "Dr. Julia Hoffmann", telefon: "+49 30 1234567", email: "kontakt@praxis-hoffmann.de", notizen: "Nutzt Medipulse seit 2023, sehr zufrieden." },
   { id: 2, name: "Herzzentrum Alster", fachrichtung: "Kardiologie", strasse: "Alsterufer 5", plz: "20354", stadt: "Hamburg", land: "Deutschland", lat: 53.5511, lng: 9.9937, status: "kunde", ansprechpartner: "Dr. Markus Petersen", telefon: "+49 40 2345678", email: "info@herzzentrum-alster.de", notizen: "Jahresvertrag, Ansprechpartner sehr reaktionsschnell." },
   { id: 3, name: "Orthopädie am Marienplatz", fachrichtung: "Orthopädie", strasse: "Marienplatz 3", plz: "80331", stadt: "München", land: "Deutschland", lat: 48.1351, lng: 11.5820, status: "interessent", ansprechpartner: "Dr. Stefan Bauer", telefon: "+49 89 3456789", email: "praxis@ortho-marienplatz.de", notizen: "Demo im Q3 geplant." },
