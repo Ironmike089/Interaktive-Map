@@ -65,8 +65,9 @@ Kontakt). Ob ein Arzt tatsächlich Kunde/Interessent ist, müsst ihr separat aus
 eurem CRM einspielen (z. B. per `id`-Abgleich) — dafür gibt es aktuell noch
 keine Automatik.
 
-**Aktueller Stand:** Teil 1+2/3 sind eingespielt (**205.340 Praxen/Ärzte**,
-Deutschland). Teil 3 folgt und wird nach Lieferung genauso verarbeitet.
+**Aktueller Stand:** Alle 3 Teile sind eingespielt — **308.074 Praxen/Ärzte**
+(Deutschland), keine doppelten IDs zwischen den Teilen. Die vollständige
+AOK-Liste ist damit komplett übernommen.
 
 **Performance-Hinweis:** Bei >300 Treffern zeigt die Seitenliste nur die
 ersten 300 an (mit Hinweis auf die Anzahl der ausgeblendeten Treffer) — die
