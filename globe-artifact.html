@@ -426,6 +426,26 @@ async function loadThree() {
     return tex;
   }
 
+  let pinTex = null;
+  function pinTexture() {
+    if (pinTex) return pinTex;
+    const c = document.createElement("canvas");
+    c.width = c.height = 64;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(32, 23, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(19, 28);
+    ctx.lineTo(45, 28);
+    ctx.lineTo(32, 58);
+    ctx.closePath();
+    ctx.fill();
+    pinTex = new THREE.CanvasTexture(c);
+    return pinTex;
+  }
+
   // Bei zehntausenden Punkten wäre ein Mesh+Sprite+Hit-Objekt PRO Arzt (wie in
   // der Demo-Version) viel zu langsam. Stattdessen: alle Positionen/Farben
   // einmal vorberechnen und als eine einzige THREE.Points-Punktwolke rendern
@@ -458,8 +478,8 @@ async function loadThree() {
 
   const pointsGeometry = new THREE.BufferGeometry();
   const pointsMaterial = new THREE.PointsMaterial({
-    size: 0.02,
-    map: glowTexture(0xffffff),
+    size: 0.024,
+    map: pinTexture(),
     vertexColors: true,
     transparent: true,
     depthWrite: false,
@@ -493,8 +513,8 @@ async function loadThree() {
   // Einzelnes Highlight-Objekt für die aktuell ausgewählte Praxis (statt
   // eines eigenen Meshes pro Arzt).
   const selectedCore = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-  const selectedSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(0xffffff), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-  selectedSprite.scale.set(0.13, 0.13, 1);
+  const selectedSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: pinTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  selectedSprite.scale.set(0.16, 0.16, 1);
   selectedCore.visible = false;
   selectedSprite.visible = false;
   globeGroup.add(selectedCore, selectedSprite);
