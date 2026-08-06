@@ -546,6 +546,28 @@ function refreshSource() {
   if (src) src.setData(toGeoJSON(getFilteredData()));
 }
 
+// Grobe Näherung für die "Praxisgröße": Anzahl Ärzte, die laut Datensatz an
+// derselben Einrichtung/Adresse hängen (siehe scripts/csv_to_json.py
+// compute_groesse — die AOK-Liste hat kein direktes Feld dafür). Balken läuft
+// grün (klein) -> rot (groß) auf einer Log-Skala, weil die meisten Praxen
+// 1-5 Ärzte haben und eine lineare Skala das kaum unterscheidbar machen würde.
+function sizePercent(n) {
+  const maxSize = 60;
+  const p = Math.log((n || 1) + 1) / Math.log(maxSize + 1);
+  return Math.max(4, Math.min(100, p * 100));
+}
+
+function sizeGaugeHtml(groesse) {
+  if (!groesse || groesse < 1) return "";
+  const pct = sizePercent(groesse);
+  const label = groesse === 1 ? "1 Arzt/Ärztin an diesem Standort" : `${groesse} Ärzte/-innen an diesem Standort`;
+  return `
+    <div class="popup-row size-row">
+      <div class="size-label">${escapeHtml(label)}</div>
+      <div class="size-bar"><div class="size-arrow" style="left:${pct}%">▲</div></div>
+    </div>`;
+}
+
 function openDoctorPopup(d, coords) {
   const mapsUrl = `https://www.openstreetmap.org/?mlat=${d.lat}&mlon=${d.lng}#map=17/${d.lat}/${d.lng}`;
   const kategorie = d.kategorie || "sonstige";
@@ -556,6 +578,7 @@ function openDoctorPopup(d, coords) {
       ${escapeHtml(KATEGORIE_LABELS[kategorie])} · ${escapeHtml(d.fachrichtung)} · ${escapeHtml(d.stadt)}
     </div>
     ${d.einrichtung ? `<div class="popup-row">🏥 ${escapeHtml(d.einrichtung)}${d.kette ? ` <span style="color:var(--text-dim)">(${escapeHtml(d.kette)})</span>` : ""}</div>` : ""}
+    ${sizeGaugeHtml(d.groesse)}
     <div class="popup-row">📍 ${escapeHtml(d.strasse)}, ${escapeHtml(d.plz)} ${escapeHtml(d.stadt)}</div>
     ${d.ansprechpartner && d.ansprechpartner !== d.name ? `<div class="popup-row">👤 ${escapeHtml(d.ansprechpartner)}</div>` : ""}
     ${d.telefon ? `<div class="popup-row">📞 ${escapeHtml(d.telefon)}</div>` : ""}

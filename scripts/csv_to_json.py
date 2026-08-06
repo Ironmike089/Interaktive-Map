@@ -152,19 +152,72 @@ def convert(rows):
             "ansprechpartner": clean(r.get("name")),
             "email": "",
             "notizen": " · ".join(notiz_parts),
+            "_src": r.get("_src", 0),
         })
     return out, skipped_no_geo, dupes
 
-if __name__ == "__main__":
-    in_paths = sys.argv[1:-1]
-    out_path = sys.argv[-1]
+def compute_groesse(records):
+    # Die AOK-Liste hat kein Feld "Anzahl Ärzte pro Praxis". Näherung: alle
+    # Ärzte-Zeilen mit derselben Einrichtung + Adresse zählen als eine Praxis;
+    # deren Team-Größe = Anzahl solcher Zeilen. Muss über ALLE Teile hinweg
+    # gerechnet werden (nicht pro Datei), sonst werden Praxen unterzählt,
+    # deren Ärzte über mehrere CSV-Teile verteilt sind.
+    from collections import Counter
+    def key_of(rec):
+        return (rec["einrichtung"].strip().lower(), rec["plz"], rec["strasse"].strip().lower())
+    counts = Counter(key_of(rec) for rec in records if rec["einrichtung"])
+    for rec in records:
+        k = key_of(rec)
+        rec["groesse"] = counts[k] if rec["einrichtung"] else 1
+
+def run_multi(pairs):
+    # python3 csv_to_json.py teil1.csv=out1.json.gz teil2.csv=out2.json.gz ...
+    # Team-Größe (siehe compute_groesse) wird ÜBER ALLE angegebenen Dateien
+    # hinweg berechnet, jede Datei aber weiterhin in ihre eigene Ausgabedatei
+    # geschrieben (gleiche Aufteilung wie die Eingabe-CSVs).
+    all_rows = []
+    for i, pair in enumerate(pairs):
+        csv_path, _ = pair.split("=", 1)
+        rows = load_part(csv_path)
+        for r in rows:
+            r["_src"] = i
+        all_rows.extend(rows)
+        print(f"loaded {len(rows)} raw rows from {csv_path}")
+
+    data, skipped, dupes = convert(all_rows)
+    compute_groesse(data)
+    print(f"converted: {len(data)} kept, {skipped} skipped (no lat/lon), {dupes} duplicate ids")
+
+    by_src = {}
+    for rec in data:
+        by_src.setdefault(rec.pop("_src"), []).append(rec)
+
+    for i, pair in enumerate(pairs):
+        _, out_path = pair.split("=", 1)
+        subset = by_src.get(i, [])
+        payload = json.dumps(subset, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        with gzip.open(out_path, "wb", compresslevel=9) as f:
+            f.write(payload)
+        print("wrote", out_path, "-", len(subset), "records")
+
+def run_single(in_paths, out_path):
     all_rows = []
     for p in in_paths:
         all_rows.extend(load_part(p))
     print(f"loaded {len(all_rows)} raw rows from {len(in_paths)} file(s)")
     data, skipped, dupes = convert(all_rows)
+    compute_groesse(data)
+    for rec in data:
+        rec.pop("_src", None)
     print(f"converted: {len(data)} kept, {skipped} skipped (no lat/lon), {dupes} duplicate ids")
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     with gzip.open(out_path, "wb", compresslevel=9) as f:
         f.write(payload)
     print("wrote", out_path)
+
+if __name__ == "__main__":
+    args = sys.argv[1:]
+    if any("=" in a for a in args):
+        run_multi(args)
+    else:
+        run_single(args[:-1], args[-1])
