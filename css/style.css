@@ -317,12 +317,16 @@ html, body {
 }
 .size-arrow {
   position: absolute;
-  top: -10px;
-  transform: translateX(-50%);
-  font-size: 10px;
-  line-height: 1;
-  color: #fff;
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 1px 1px rgba(0, 0, 0, 0.9);
+  top: 50%;
+  left: 0;
+  width: 11px;
+  height: 11px;
+  margin-top: -5.5px;
+  margin-left: -5.5px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #101a2e;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 .popup-actions { display: flex; gap: 8px; margin-top: 10px; }
 .popup-actions a {

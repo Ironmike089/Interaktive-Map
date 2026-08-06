@@ -241,12 +241,16 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
 }
 .size-arrow {
   position: absolute;
-  top: -10px;
-  transform: translateX(-50%);
-  font-size: 10px;
-  line-height: 1;
-  color: #fff;
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 1px 1px rgba(0, 0, 0, 0.9);
+  top: 50%;
+  left: 0;
+  width: 11px;
+  height: 11px;
+  margin-top: -5.5px;
+  margin-left: -5.5px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--surface-solid, #101a2e);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 .detail-grid { display: flex; flex-direction: column; gap: 10px; margin: 0 0 14px; }
 .detail-grid dt { font-family: "IBM Plex Mono", monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 2px; }
@@ -332,7 +336,7 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
     <div class="detail-sub" id="d-sub"></div>
     <div id="d-groesse-row" class="size-row">
       <div class="size-label" id="d-groesse-label"></div>
-      <div class="size-bar"><div class="size-arrow" id="d-groesse-arrow">▲</div></div>
+      <div class="size-bar"><div class="size-arrow" id="d-groesse-arrow"></div></div>
     </div>
     <dl class="detail-grid">
       <div><dt>Adresse</dt><dd id="d-address"></dd></div>

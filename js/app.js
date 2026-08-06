@@ -564,7 +564,7 @@ function sizeGaugeHtml(groesse) {
   return `
     <div class="popup-row size-row">
       <div class="size-label">${escapeHtml(label)}</div>
-      <div class="size-bar"><div class="size-arrow" style="left:${pct}%">▲</div></div>
+      <div class="size-bar"><div class="size-arrow" style="left:${pct}%"></div></div>
     </div>`;
 }
 
