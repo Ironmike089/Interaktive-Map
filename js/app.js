@@ -274,28 +274,195 @@ document.getElementById("kategorie-none").addEventListener("click", () => {
   applyFilters();
 });
 
-function createPinIcon() {
+// Zeichnet je Kategorie ein kleines, wiedererkennbares Symbol (angelehnt an
+// die Icon-Vorlage) in Weiß auf die Pin-Form. Bewusst einfache Formen statt
+// Detailgrafik — bei der winzigen Darstellungsgröße auf der Karte zählt vor
+// allem die Silhouette.
+const KATEGORIE_GLYPHS = {
+  mvz(ctx, cx, cy, r) {
+    ctx.fillRect(cx - r * 0.55, cy - r * 0.35, r * 1.1, r * 0.95);
+    ctx.fillRect(cx - r * 0.12, cy - r * 0.7, r * 0.24, r * 0.24);
+    line(ctx, cx - r * 0.55, cy + r * 0.15, cx + r * 0.55, cy + r * 0.15, r * 0.12);
+    plus(ctx, cx, cy + r * 0.05, r * 0.28, r * 0.1);
+  },
+  hausarzt(ctx, cx, cy, r) { plus(ctx, cx, cy, r * 0.6, r * 0.22); },
+  innere(ctx, cx, cy, r) { heart(ctx, cx, cy, r * 0.65); },
+  chirurgie(ctx, cx, cy, r) {
+    line(ctx, cx - r * 0.5, cy + r * 0.5, cx + r * 0.35, cy - r * 0.35, r * 0.12);
+    tri(ctx, cx + r * 0.15, cy - r * 0.15, cx + r * 0.55, cy - r * 0.55, cx + r * 0.5, cy - r * 0.05);
+  },
+  orthopaedie(ctx, cx, cy, r) {
+    line(ctx, cx - r * 0.45, cy - r * 0.45, cx + r * 0.45, cy + r * 0.45, r * 0.22);
+    circle(ctx, cx - r * 0.5, cy - r * 0.5, r * 0.28);
+    circle(ctx, cx + r * 0.5, cy + r * 0.5, r * 0.28);
+  },
+  psychotherapie(ctx, cx, cy, r) {
+    circle(ctx, cx - r * 0.28, cy - r * 0.05, r * 0.42);
+    circle(ctx, cx + r * 0.3, cy - r * 0.05, r * 0.42);
+    circle(ctx, cx, cy + r * 0.28, r * 0.4);
+  },
+  zahnmedizin(ctx, cx, cy, r) {
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - r * 0.15, r * 0.42, r * 0.38, 0, 0, Math.PI * 2);
+    ctx.fill();
+    tri(ctx, cx - r * 0.22, cy + r * 0.1, cx - r * 0.04, cy + r * 0.1, cx - r * 0.12, cy + r * 0.65);
+    tri(ctx, cx + r * 0.04, cy + r * 0.1, cx + r * 0.22, cy + r * 0.1, cx + r * 0.12, cy + r * 0.65);
+  },
+  frauenheilkunde(ctx, cx, cy, r) {
+    ctx.beginPath();
+    ctx.arc(cx, cy - r * 0.2, r * 0.35, 0, Math.PI * 2);
+    ctx.lineWidth = r * 0.16;
+    ctx.strokeStyle = "#ffffff";
+    ctx.stroke();
+    line(ctx, cx, cy + r * 0.1, cx, cy + r * 0.7, r * 0.14);
+    line(ctx, cx - r * 0.22, cy + r * 0.45, cx + r * 0.22, cy + r * 0.45, r * 0.14);
+  },
+  kinderheilkunde(ctx, cx, cy, r) {
+    circle(ctx, cx - r * 0.42, cy - r * 0.5, r * 0.22);
+    circle(ctx, cx + r * 0.42, cy - r * 0.5, r * 0.22);
+    circle(ctx, cx, cy + r * 0.05, r * 0.55);
+  },
+  augenheilkunde(ctx, cx, cy, r) {
+    ctx.beginPath();
+    ctx.moveTo(cx - r * 0.6, cy);
+    ctx.quadraticCurveTo(cx, cy - r * 0.5, cx + r * 0.6, cy);
+    ctx.quadraticCurveTo(cx, cy + r * 0.5, cx - r * 0.6, cy);
+    ctx.lineWidth = r * 0.14;
+    ctx.strokeStyle = "#ffffff";
+    ctx.stroke();
+    circle(ctx, cx, cy, r * 0.2);
+  },
+  hno(ctx, cx, cy, r) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.45, Math.PI * 0.15, Math.PI * 1.55);
+    ctx.lineWidth = r * 0.18;
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineCap = "round";
+    ctx.stroke();
+  },
+  hautarzt(ctx, cx, cy, r) { drop(ctx, cx, cy, r * 0.5); },
+  urologie(ctx, cx, cy, r) {
+    bean(ctx, cx - r * 0.28, cy, r * 0.4);
+    bean(ctx, cx + r * 0.28, cy, r * 0.4);
+  },
+  radiologie(ctx, cx, cy, r) {
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2 - Math.PI / 2;
+      circle(ctx, cx + Math.cos(a) * r * 0.42, cy + Math.sin(a) * r * 0.42, r * 0.22);
+    }
+    circle(ctx, cx, cy, r * 0.16);
+  },
+  labor(ctx, cx, cy, r) {
+    ctx.beginPath();
+    ctx.moveTo(cx - r * 0.22, cy - r * 0.6);
+    ctx.lineTo(cx - r * 0.22, cy + r * 0.3);
+    ctx.arc(cx, cy + r * 0.3, r * 0.22, Math.PI, 0, true);
+    ctx.lineTo(cx + r * 0.22, cy - r * 0.6);
+    ctx.closePath();
+    ctx.lineWidth = r * 0.12;
+    ctx.strokeStyle = "#ffffff";
+    ctx.stroke();
+    ctx.fillRect(cx - r * 0.22, cy, r * 0.44, r * 0.32);
+  },
+  neurologie(ctx, cx, cy, r) {
+    circle(ctx, cx, cy, r * 0.2);
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      line(ctx, cx, cy, cx + Math.cos(a) * r * 0.6, cy + Math.sin(a) * r * 0.6, r * 0.08);
+    }
+  },
+  sonstige(ctx, cx, cy, r) {
+    [-0.35, 0, 0.35].forEach((dx) => circle(ctx, cx + dx * r, cy, r * 0.12));
+  },
+};
+
+function line(ctx, x1, y1, x2, y2, w) {
+  ctx.lineWidth = w;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+}
+function circle(ctx, cx, cy, r) {
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+}
+function tri(ctx, x1, y1, x2, y2, x3, y3) {
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.lineTo(x3, y3);
+  ctx.closePath();
+  ctx.fill();
+}
+function plus(ctx, cx, cy, len, w) {
+  line(ctx, cx - len, cy, cx + len, cy, w);
+  line(ctx, cx, cy - len, cx, cy + len, w);
+}
+function heart(ctx, cx, cy, r) {
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + r * 0.7);
+  ctx.bezierCurveTo(cx - r * 1.3, cy - r * 0.3, cx - r * 0.4, cy - r * 1.1, cx, cy - r * 0.35);
+  ctx.bezierCurveTo(cx + r * 0.4, cy - r * 1.1, cx + r * 1.3, cy - r * 0.3, cx, cy + r * 0.7);
+  ctx.closePath();
+  ctx.fill();
+}
+function drop(ctx, cx, cy, r) {
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.bezierCurveTo(cx + r, cy - r * 0.1, cx + r * 0.6, cy + r, cx, cy + r);
+  ctx.bezierCurveTo(cx - r * 0.6, cy + r, cx - r, cy - r * 0.1, cx, cy - r);
+  ctx.closePath();
+  ctx.fill();
+}
+function bean(ctx, cx, cy, r) {
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, r * 0.6, r, 0.5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function createCategoryPinIcon(key) {
   const size = 64;
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#000000";
-  // Kreis (Kopf der Pin-Form)
+  const color = KATEGORIE_COLORS[key] || KATEGORIE_COLORS.sonstige;
+  const cx = size / 2, cy = size * 0.36, r = size * 0.26;
+
+  ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.arc(size / 2, size * 0.36, size * 0.26, 0, Math.PI * 2);
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fill();
-  // Spitze (Dreieck) darunter
   ctx.beginPath();
   ctx.moveTo(size * 0.28, size * 0.42);
   ctx.lineTo(size * 0.72, size * 0.42);
   ctx.lineTo(size * 0.5, size * 0.92);
   ctx.closePath();
   ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.92, 0, Math.PI * 2);
+  ctx.clip();
+  (KATEGORIE_GLYPHS[key] || KATEGORIE_GLYPHS.sonstige)(ctx, cx, cy, r);
+  ctx.restore();
+
   return ctx.getImageData(0, 0, size, size);
 }
 
 function setupMapLayers() {
-  map.addImage("pin-icon", createPinIcon(), { sdf: true });
+  KATEGORIE_KEYS.forEach((key) => {
+    map.addImage(`pin-${key}`, createCategoryPinIcon(key));
+  });
 
   map.addSource("aerzte", {
     type: "geojson",
@@ -338,21 +505,16 @@ function setupMapLayers() {
     source: "aerzte",
     filter: ["!", ["has", "point_count"]],
     layout: {
-      "icon-image": "pin-icon",
+      "icon-image": [
+        "match",
+        ["get", "kategorie"],
+        ...KATEGORIE_KEYS.flatMap((key) => [key, `pin-${key}`]),
+        "pin-sonstige",
+      ],
       "icon-size": ["interpolate", ["linear"], ["zoom"], 5, 0.32, 12, 0.55, 16, 0.75],
       "icon-anchor": "bottom",
       "icon-allow-overlap": true,
       "icon-ignore-placement": true,
-    },
-    paint: {
-      "icon-color": [
-        "match",
-        ["get", "kategorie"],
-        ...KATEGORIE_KEYS.flatMap((key) => [key, KATEGORIE_COLORS[key]]),
-        KATEGORIE_COLORS.sonstige,
-      ],
-      "icon-halo-color": "#ffffff",
-      "icon-halo-width": 1.2,
     },
   });
 
