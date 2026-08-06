@@ -33,10 +33,22 @@
       </div>
 
       <div class="sidebar-section filters">
+        <div class="filter-group-label">Status</div>
         <label class="chip chip-kunde"><input type="checkbox" data-status="kunde" checked> Kunde</label>
         <label class="chip chip-interessent"><input type="checkbox" data-status="interessent" checked> Interessent</label>
         <label class="chip chip-lead"><input type="checkbox" data-status="lead" checked> Lead</label>
         <label class="chip chip-inaktiv"><input type="checkbox" data-status="inaktiv" checked> Inaktiv</label>
+      </div>
+
+      <div class="sidebar-section filters kategorie-filters">
+        <div class="filter-group-label">
+          Fachrichtung &amp; MVZ
+          <span class="filter-group-actions">
+            <button type="button" id="kategorie-all">alle</button>
+            <button type="button" id="kategorie-none">keine</button>
+          </span>
+        </div>
+        <div id="kategorie-list" class="kategorie-list"></div>
       </div>
 
       <div class="sidebar-section list-wrap">
@@ -54,11 +66,8 @@
       </div>
 
       <div class="legend">
-        <div class="legend-title">Legende</div>
-        <div class="legend-item"><span class="dot dot-kunde"></span> Kunde</div>
-        <div class="legend-item"><span class="dot dot-interessent"></span> Interessent</div>
-        <div class="legend-item"><span class="dot dot-lead"></span> Lead</div>
-        <div class="legend-item"><span class="dot dot-inaktiv"></span> Inaktiv</div>
+        <div class="legend-title">Farbe = Fachrichtung</div>
+        <div class="legend-hint">Alle Kategorien &amp; Farben in der Seitenleiste</div>
       </div>
     </main>
   </div>

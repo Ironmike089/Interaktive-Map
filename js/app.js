@@ -18,7 +18,51 @@ const STATUS_LABELS = {
   inaktiv: "Inaktiv",
 };
 
+// Fachrichtung/MVZ-Kategorie — bestimmt Pin-Farbe auf der Karte und ist die
+// zweite, unabhängige Filter-Dimension neben dem Status (siehe
+// scripts/csv_to_json.py für die Zuordnung der rohen AOK-Fachrichtungen).
+const KATEGORIE_COLORS = {
+  mvz: "#1d4ed8",
+  hausarzt: "#0d9488",
+  innere: "#dc2626",
+  chirurgie: "#16a34a",
+  orthopaedie: "#7c3aed",
+  psychotherapie: "#ea580c",
+  zahnmedizin: "#0891b2",
+  frauenheilkunde: "#db2777",
+  kinderheilkunde: "#ca8a04",
+  augenheilkunde: "#4338ca",
+  hno: "#0e7490",
+  hautarzt: "#92400e",
+  urologie: "#65a30d",
+  radiologie: "#1e3a8a",
+  labor: "#a21caf",
+  neurologie: "#6d28d9",
+  sonstige: "#64748b",
+};
+const KATEGORIE_LABELS = {
+  mvz: "MVZ",
+  hausarzt: "Hausarzt",
+  innere: "Innere Medizin",
+  chirurgie: "Chirurgie",
+  orthopaedie: "Orthopädie",
+  psychotherapie: "Psychotherapie",
+  zahnmedizin: "Zahnmedizin",
+  frauenheilkunde: "Frauenheilkunde",
+  kinderheilkunde: "Kinderheilkunde",
+  augenheilkunde: "Augenheilkunde",
+  hno: "HNO",
+  hautarzt: "Hautarzt",
+  urologie: "Urologie",
+  radiologie: "Radiologie",
+  labor: "Labor",
+  neurologie: "Neurologie",
+  sonstige: "Sonstige",
+};
+const KATEGORIE_KEYS = Object.keys(KATEGORIE_LABELS);
+
 let activeStatuses = new Set(["kunde", "interessent", "lead", "inaktiv"]);
+let activeKategorien = new Set(KATEGORIE_KEYS);
 let searchTerm = "";
 let autoRotate = true;
 let userInteracting = false;
@@ -58,9 +102,32 @@ async function loadAerzteData() {
   });
   if (merged.length === 0 && typeof SAMPLE_AERZTE_DATA !== "undefined") {
     console.info("Keine echten Ärztedaten gefunden — nutze Beispieldaten.");
-    return SAMPLE_AERZTE_DATA;
+    return SAMPLE_AERZTE_DATA.map((d) => ({ ...d, kategorie: d.kategorie || guessKategorie(d.fachrichtung) }));
   }
   return merged;
+}
+
+// Grobe Fachrichtung->Kategorie-Zuordnung nur für die Beispieldaten (die
+// echten AOK-Daten bringen "kategorie" bereits fertig aus scripts/csv_to_json.py mit).
+function guessKategorie(fachrichtung) {
+  const map = {
+    "Allgemeinmedizin": "hausarzt",
+    "Innere Medizin": "innere",
+    "Kardiologie": "innere",
+    "Chirurgie": "chirurgie",
+    "Orthopädie": "orthopaedie",
+    "Psychiatrie": "psychotherapie",
+    "Zahnmedizin": "zahnmedizin",
+    "Gynäkologie": "frauenheilkunde",
+    "Pädiatrie": "kinderheilkunde",
+    "Augenheilkunde": "augenheilkunde",
+    "HNO": "hno",
+    "Dermatologie": "hautarzt",
+    "Urologie": "urologie",
+    "Radiologie": "radiologie",
+    "Neurologie": "neurologie",
+  };
+  return map[fachrichtung] || "sonstige";
 }
 
 function toGeoJSON(data) {
@@ -78,6 +145,7 @@ function getFilteredData() {
   const term = searchTerm.trim().toLowerCase();
   return AERZTE_DATA.filter((d) => {
     if (!activeStatuses.has(d.status)) return false;
+    if (!activeKategorien.has(d.kategorie || "sonstige")) return false;
     if (!term) return true;
     return (
       d.name.toLowerCase().includes(term) ||
@@ -175,6 +243,37 @@ function setLoadingState(loading) {
   }
 }
 
+function renderKategorieFilters() {
+  const container = document.getElementById("kategorie-list");
+  container.innerHTML = KATEGORIE_KEYS.map((key) => `
+    <label class="kategorie-chip" style="border-color: color-mix(in srgb, ${KATEGORIE_COLORS[key]} 55%, var(--border))">
+      <input type="checkbox" data-kategorie="${key}" checked>
+      <span class="dot" style="background:${KATEGORIE_COLORS[key]}"></span>
+      ${escapeHtml(KATEGORIE_LABELS[key])}
+    </label>
+  `).join("");
+  container.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const key = cb.dataset.kategorie;
+      if (cb.checked) activeKategorien.add(key);
+      else activeKategorien.delete(key);
+      applyFilters();
+    });
+  });
+}
+renderKategorieFilters();
+
+document.getElementById("kategorie-all").addEventListener("click", () => {
+  activeKategorien = new Set(KATEGORIE_KEYS);
+  document.querySelectorAll('#kategorie-list input[type="checkbox"]').forEach((cb) => (cb.checked = true));
+  applyFilters();
+});
+document.getElementById("kategorie-none").addEventListener("click", () => {
+  activeKategorien = new Set();
+  document.querySelectorAll('#kategorie-list input[type="checkbox"]').forEach((cb) => (cb.checked = false));
+  applyFilters();
+});
+
 function createPinIcon() {
   const size = 64;
   const canvas = document.createElement("canvas");
@@ -248,12 +347,9 @@ function setupMapLayers() {
     paint: {
       "icon-color": [
         "match",
-        ["get", "status"],
-        "kunde", STATUS_COLORS.kunde,
-        "interessent", STATUS_COLORS.interessent,
-        "lead", STATUS_COLORS.lead,
-        "inaktiv", STATUS_COLORS.inaktiv,
-        "#ffffff",
+        ["get", "kategorie"],
+        ...KATEGORIE_KEYS.flatMap((key) => [key, KATEGORIE_COLORS[key]]),
+        KATEGORIE_COLORS.sonstige,
       ],
       "icon-halo-color": "#ffffff",
       "icon-halo-width": 1.2,
@@ -290,9 +386,13 @@ function refreshSource() {
 
 function openDoctorPopup(d, coords) {
   const mapsUrl = `https://www.openstreetmap.org/?mlat=${d.lat}&mlon=${d.lng}#map=17/${d.lat}/${d.lng}`;
+  const kategorie = d.kategorie || "sonstige";
   const html = `
     <div class="popup-title">${escapeHtml(d.name)}</div>
-    <div class="popup-sub">${escapeHtml(d.fachrichtung)} · ${escapeHtml(d.stadt)}, ${escapeHtml(d.land)}</div>
+    <div class="popup-sub">
+      <span class="dot" style="background:${KATEGORIE_COLORS[kategorie]}"></span>
+      ${escapeHtml(KATEGORIE_LABELS[kategorie])} · ${escapeHtml(d.fachrichtung)} · ${escapeHtml(d.stadt)}
+    </div>
     ${d.einrichtung ? `<div class="popup-row">🏥 ${escapeHtml(d.einrichtung)}${d.kette ? ` <span style="color:var(--text-dim)">(${escapeHtml(d.kette)})</span>` : ""}</div>` : ""}
     <div class="popup-row">📍 ${escapeHtml(d.strasse)}, ${escapeHtml(d.plz)} ${escapeHtml(d.stadt)}</div>
     ${d.ansprechpartner && d.ansprechpartner !== d.name ? `<div class="popup-row">👤 ${escapeHtml(d.ansprechpartner)}</div>` : ""}
@@ -345,12 +445,14 @@ function renderList() {
     const li = document.createElement("li");
     li.className = "doctor-item";
     li.dataset.id = d.id;
+    const kategorie = d.kategorie || "sonstige";
     li.innerHTML = `
       <div class="doctor-item-top">
-        <span class="status-badge ${d.status}"></span>
+        <span class="dot" style="background:${KATEGORIE_COLORS[kategorie]}" title="${escapeHtml(KATEGORIE_LABELS[kategorie])}"></span>
         <span class="doctor-name">${escapeHtml(d.name)}</span>
+        <span class="status-badge ${d.status}" title="${escapeHtml(STATUS_LABELS[d.status] || d.status)}"></span>
       </div>
-      <div class="doctor-meta">${escapeHtml(d.fachrichtung)} · ${escapeHtml(d.stadt)}, ${escapeHtml(d.land)}</div>
+      <div class="doctor-meta">${escapeHtml(KATEGORIE_LABELS[kategorie])} · ${escapeHtml(d.fachrichtung)} · ${escapeHtml(d.stadt)}</div>
       ${d.einrichtung ? `<div class="doctor-meta doctor-einrichtung">${escapeHtml(d.einrichtung)}</div>` : ""}
     `;
     li.addEventListener("click", () => selectDoctor(d.id, true));

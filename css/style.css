@@ -123,6 +123,29 @@ html, body {
   flex-wrap: wrap;
   gap: 8px;
 }
+.filter-group-label {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+.filter-group-actions button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0 3px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.filter-group-actions button:hover { text-decoration: underline; }
+
 .chip {
   display: flex;
   align-items: center;
@@ -140,6 +163,28 @@ html, body {
 .chip-interessent { border-color: color-mix(in srgb, var(--c-interessent) 50%, var(--border)); }
 .chip-lead { border-color: color-mix(in srgb, var(--c-lead) 50%, var(--border)); }
 .chip-inaktiv { border-color: color-mix(in srgb, var(--c-inaktiv) 50%, var(--border)); }
+
+.kategorie-filters { max-height: 220px; display: flex; flex-direction: column; flex-wrap: nowrap; }
+.kategorie-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  overflow-y: auto;
+}
+.kategorie-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  font-size: 11.5px;
+  cursor: pointer;
+  user-select: none;
+}
+.kategorie-chip input { accent-color: var(--accent); }
+.kategorie-chip .dot { width: 8px; height: 8px; }
 
 .list-wrap {
   flex: 1;
@@ -238,9 +283,10 @@ html, body {
   backdrop-filter: blur(4px);
   z-index: 5;
 }
-.legend-title { font-weight: 700; margin-bottom: 6px; color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.legend-title { font-weight: 700; margin-bottom: 4px; color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.legend-hint { font-size: 11.5px; color: var(--text-dim); max-width: 180px; }
 .legend-item { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
-.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; vertical-align: middle; flex-shrink: 0; }
 .dot-kunde { background: var(--c-kunde); }
 .dot-interessent { background: var(--c-interessent); }
 .dot-lead { background: var(--c-lead); }
