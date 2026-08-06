@@ -944,7 +944,7 @@ function showDetail(d) {
   if (d.notizen) { document.getElementById("d-notes").textContent = d.notizen; notesRow.hidden = false; }
   else notesRow.hidden = true;
 
-  const mapsUrl = `https://www.openstreetmap.org/?mlat=${d.lat}&mlon=${d.lng}#map=17/${d.lat}/${d.lng}`;
+  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}&travelmode=driving`;
   const actions = [];
   if (d.telefon) actions.push(`<a href="tel:${esc(d.telefon)}">Anrufen</a>`);
   if (d.email) actions.push(`<a href="mailto:${esc(d.email)}">E-Mail</a>`);

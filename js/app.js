@@ -579,7 +579,12 @@ function earningsRowHtml(d) {
 
 function openDoctorPopup(d, coords) {
   currentPopupDoctor = d;
-  const mapsUrl = `https://www.openstreetmap.org/?mlat=${d.lat}&mlon=${d.lng}#map=17/${d.lat}/${d.lng}`;
+  // Google-Maps-Universal-Link (https://developers.google.com/maps/documentation/urls/get-started):
+  // öffnet auf dem Handy die echte Google-Maps-App mit Turn-by-Turn-Navigation,
+  // Live-Verkehr, km-Anzeige und Fahrzeit — am Desktop die Google-Maps-Website
+  // mit fertiger Autoroute. Eigene Turn-by-Turn-Navigation nachzubauen wäre
+  // ohne eigene Routing-/Verkehrsdaten nicht möglich, daher der Deep-Link.
+  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}&travelmode=driving`;
   const kategorie = d.kategorie || "sonstige";
   const html = `
     <div class="popup-title">${escapeHtml(d.name)}</div>
