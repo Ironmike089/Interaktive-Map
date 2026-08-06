@@ -128,6 +128,44 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
 .ghost-btn:hover { background: var(--surface-2); }
 .ghost-btn:focus-visible, .pill-btn:focus-visible, input:focus-visible, .chip:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+.settings-panel {
+  position: absolute; top: 76px; right: 16px; z-index: 11; width: 250px;
+  background: var(--surface-solid); border: 1px solid var(--border-solid); border-radius: 16px;
+  padding: 14px; box-shadow: var(--shadow);
+}
+.settings-panel[hidden] { display: none; }
+.settings-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: "Archivo", sans-serif; font-weight: 700; font-size: 13.5px; margin-bottom: 12px;
+}
+.settings-panel-header .ghost-btn { width: 26px; height: 26px; font-size: 14px; }
+.settings-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; }
+.settings-divider { height: 1px; background: var(--border-solid); margin: 14px 0; }
+
+.switch { position: relative; display: inline-block; width: 38px; height: 21px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch-slider {
+  position: absolute; inset: 0; background: var(--border-solid); border-radius: 999px;
+  transition: background 0.15s ease; cursor: pointer;
+}
+.switch-slider::before {
+  content: ""; position: absolute; width: 15px; height: 15px; left: 3px; top: 3px;
+  background: #fff; border-radius: 50%; transition: transform 0.15s ease;
+}
+.switch input:checked + .switch-slider { background: var(--accent); }
+.switch input:checked + .switch-slider::before { transform: translateX(17px); }
+
+.gpa-block { padding-top: 2px; }
+.gpa-title { font-family: "Archivo", sans-serif; font-weight: 700; font-size: 13.5px; }
+.gpa-sub { font-size: 11.5px; color: var(--text-dim); margin-bottom: 10px; }
+.gpa-slider { width: 100%; accent-color: var(--accent); }
+.gpa-input-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.gpa-input {
+  width: 84px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border-solid);
+  background: var(--surface-2); color: var(--text); font-family: "Karla", sans-serif; font-size: 13px;
+}
+.gpa-unit { font-size: 12px; color: var(--text-dim); }
+
 .panel {
   position: absolute; top: 76px; left: 16px; bottom: 16px; width: 320px; z-index: 9;
   display: flex; flex-direction: column; gap: 12px;
@@ -252,6 +290,8 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
   border: 2px solid var(--surface-solid, #101a2e);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
+.earnings-row { font-size: 12.5px; font-weight: 600; color: var(--s-kunde); margin: 0 0 14px; }
+.li-earnings { color: var(--s-kunde); font-weight: 600; }
 .detail-grid { display: flex; flex-direction: column; gap: 10px; margin: 0 0 14px; }
 .detail-grid dt { font-family: "IBM Plex Mono", monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 2px; }
 .detail-grid dd { margin: 0; font-size: 13px; }
@@ -294,8 +334,36 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
       <div class="stat s-interessent"><span class="stat-n mono" id="n-interessent">0</span><span class="stat-l">Interessenten</span></div>
       <div class="stat s-lead"><span class="stat-n mono" id="n-lead">0</span><span class="stat-l">Leads</span></div>
     </div>
+    <button id="settings-toggle" class="ghost-btn" aria-label="Einstellungen" type="button">⚙</button>
     <button id="panel-toggle" class="ghost-btn" aria-label="Liste ein-/ausblenden" type="button">☰</button>
   </header>
+
+  <div class="settings-panel" id="settings-panel" hidden>
+    <div class="settings-panel-header">
+      <span>Einstellungen</span>
+      <button id="settings-close" class="ghost-btn" aria-label="Schließen" type="button">×</button>
+    </div>
+
+    <div class="settings-row">
+      <span class="settings-label">Automatische Rotation</span>
+      <label class="switch">
+        <input type="checkbox" id="settings-rotate-toggle" checked>
+        <span class="switch-slider"></span>
+      </label>
+    </div>
+
+    <div class="settings-divider"></div>
+
+    <div class="gpa-block">
+      <div class="gpa-title">GPA</div>
+      <div class="gpa-sub">Gewinn pro Arzt</div>
+      <input type="range" id="gpa-slider" class="gpa-slider" min="0" max="300" step="5" value="50">
+      <div class="gpa-input-row">
+        <input type="number" id="gpa-input" class="gpa-input" min="0" max="2000" step="5" value="50">
+        <span class="gpa-unit">€ / Arzt</span>
+      </div>
+    </div>
+  </div>
 
   <aside class="panel" id="panel">
     <input id="search" type="text" placeholder="Name, Stadt, Fachrichtung …" />
@@ -338,6 +406,7 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
       <div class="size-label" id="d-groesse-label"></div>
       <div class="size-bar"><div class="size-arrow" id="d-groesse-arrow"></div></div>
     </div>
+    <div class="earnings-row" id="d-earnings"></div>
     <dl class="detail-grid">
       <div><dt>Adresse</dt><dd id="d-address"></dd></div>
       <div id="d-contact-row"><dt>Kontakt</dt><dd id="d-contact"></dd></div>
@@ -685,9 +754,17 @@ async function loadThree() {
 
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
-  document.getElementById("rotate-btn").addEventListener("click", () => {
-    autoRotateEnabled = !autoRotateEnabled;
+  function setAutoRotate(value) {
+    autoRotateEnabled = value;
     document.getElementById("rotate-icon").textContent = autoRotateEnabled ? "⏸" : "▶";
+    document.getElementById("settings-rotate-toggle").checked = autoRotateEnabled;
+  }
+
+  document.getElementById("rotate-btn").addEventListener("click", () => {
+    setAutoRotate(!autoRotateEnabled);
+  });
+  document.getElementById("settings-rotate-toggle").addEventListener("change", (e) => {
+    setAutoRotate(e.target.checked);
   });
 
   function selectDoctor(id, doFly = true) {
@@ -751,6 +828,7 @@ let activeStatuses = new Set(["kunde", "interessent", "lead", "inaktiv"]);
 let activeKategorien = new Set(KATEGORIE_KEYS);
 let searchTerm = "";
 let selectedId = null;
+let gewinnProArzt = Number(localStorage.getItem("medipulse_gpa")) || 50;
 
 function getFiltered() {
   const term = searchTerm.trim().toLowerCase();
@@ -788,6 +866,7 @@ function renderList() {
       </div>
       <div class="li-meta">${esc(KATEGORIE_LABEL[d.kategorie] || "Sonstige")} · ${esc(d.fachrichtung)} · ${esc(d.stadt)}</div>
       ${d.einrichtung ? `<div class="li-meta li-einrichtung">${esc(d.einrichtung)}</div>` : ""}
+      <div class="li-meta li-earnings">💰 ${((d.groesse || 1) * gewinnProArzt).toLocaleString("de-DE")} € möglich</div>
     </li>`
     )
     .join("");
@@ -853,6 +932,9 @@ function showDetail(d) {
     groesseRow.hidden = true;
   }
 
+  document.getElementById("d-earnings").textContent =
+    `💰 ${((d.groesse || 1) * gewinnProArzt).toLocaleString("de-DE")} € möglicher Umsatz`;
+
   const contactRow = document.getElementById("d-contact-row");
   const contactParts = [d.ansprechpartner, d.telefon, d.email].filter(Boolean);
   if (contactParts.length) { document.getElementById("d-contact").textContent = contactParts.join(" · "); contactRow.hidden = false; }
@@ -875,6 +957,37 @@ document.getElementById("detail-close").addEventListener("click", () => {
   selectedId = null;
   document.querySelectorAll(".list-item").forEach((li) => li.classList.remove("active"));
 });
+
+// --- Einstellungen: Rad oben rechts, Rotation + GPA (Gewinn pro Arzt) ---
+document.getElementById("settings-toggle").addEventListener("click", () => {
+  document.getElementById("settings-panel").hidden = false;
+});
+document.getElementById("settings-close").addEventListener("click", () => {
+  document.getElementById("settings-panel").hidden = true;
+});
+document.addEventListener("click", (e) => {
+  const panel = document.getElementById("settings-panel");
+  if (!panel.hidden && !panel.contains(e.target) && e.target.id !== "settings-toggle") {
+    panel.hidden = true;
+  }
+});
+
+function setGewinnProArzt(value) {
+  gewinnProArzt = Math.max(0, Number(value) || 0);
+  localStorage.setItem("medipulse_gpa", String(gewinnProArzt));
+  document.getElementById("gpa-slider").value = gewinnProArzt;
+  document.getElementById("gpa-input").value = gewinnProArzt;
+  renderList();
+  if (selectedId != null) {
+    const doctor = AERZTE_DATA.find((d) => d.id === selectedId);
+    if (doctor) showDetail(doctor);
+  }
+}
+
+document.getElementById("gpa-slider").addEventListener("input", (e) => setGewinnProArzt(e.target.value));
+document.getElementById("gpa-input").addEventListener("input", (e) => setGewinnProArzt(e.target.value));
+document.getElementById("gpa-slider").value = gewinnProArzt;
+document.getElementById("gpa-input").value = gewinnProArzt;
 
 let searchDebounceTimer = null;
 document.getElementById("search").addEventListener("input", (e) => {

@@ -68,6 +68,9 @@ let autoRotate = true;
 let userInteracting = false;
 let rotateFrame = null;
 let selectedId = null;
+let currentPopupDoctor = null;
+
+let gewinnProArzt = Number(localStorage.getItem("medipulse_gpa")) || 50;
 
 let AERZTE_DATA = [];
 const MAX_LIST_ITEMS = 300;
@@ -568,7 +571,14 @@ function sizeGaugeHtml(groesse) {
     </div>`;
 }
 
+function earningsRowHtml(d) {
+  const groesse = d.groesse || 1;
+  const total = groesse * gewinnProArzt;
+  return `<div class="popup-row earnings-row">💰 ${total.toLocaleString("de-DE")} € möglicher Umsatz</div>`;
+}
+
 function openDoctorPopup(d, coords) {
+  currentPopupDoctor = d;
   const mapsUrl = `https://www.openstreetmap.org/?mlat=${d.lat}&mlon=${d.lng}#map=17/${d.lat}/${d.lng}`;
   const kategorie = d.kategorie || "sonstige";
   const html = `
@@ -579,6 +589,7 @@ function openDoctorPopup(d, coords) {
     </div>
     ${d.einrichtung ? `<div class="popup-row">🏥 ${escapeHtml(d.einrichtung)}${d.kette ? ` <span style="color:var(--text-dim)">(${escapeHtml(d.kette)})</span>` : ""}</div>` : ""}
     ${sizeGaugeHtml(d.groesse)}
+    ${earningsRowHtml(d)}
     <div class="popup-row">📍 ${escapeHtml(d.strasse)}, ${escapeHtml(d.plz)} ${escapeHtml(d.stadt)}</div>
     ${d.ansprechpartner && d.ansprechpartner !== d.name ? `<div class="popup-row">👤 ${escapeHtml(d.ansprechpartner)}</div>` : ""}
     ${d.telefon ? `<div class="popup-row">📞 ${escapeHtml(d.telefon)}</div>` : ""}
@@ -593,6 +604,8 @@ function openDoctorPopup(d, coords) {
   `;
   popup.setLngLat(coords).setHTML(html).addTo(map);
 }
+
+popup.on("close", () => { currentPopupDoctor = null; });
 
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, (c) => ({
@@ -639,6 +652,7 @@ function renderList() {
       </div>
       <div class="doctor-meta">${escapeHtml(KATEGORIE_LABELS[kategorie])} · ${escapeHtml(d.fachrichtung)} · ${escapeHtml(d.stadt)}</div>
       ${d.einrichtung ? `<div class="doctor-meta doctor-einrichtung">${escapeHtml(d.einrichtung)}</div>` : ""}
+      <div class="doctor-meta doctor-earnings">💰 ${((d.groesse || 1) * gewinnProArzt).toLocaleString("de-DE")} € möglich</div>
     `;
     li.addEventListener("click", () => selectDoctor(d.id, true));
     list.appendChild(li);
@@ -711,7 +725,43 @@ map.on("moveend", () => {
   window.__resumeTimer = setTimeout(() => (userInteracting = false), 2500);
 });
 
-document.getElementById("rotate-toggle").addEventListener("click", () => {
-  autoRotate = !autoRotate;
+function setAutoRotate(value) {
+  autoRotate = value;
   document.getElementById("rotate-icon").textContent = autoRotate ? "⏸" : "▶";
+  document.getElementById("settings-rotate-toggle").checked = autoRotate;
+}
+
+document.getElementById("rotate-toggle").addEventListener("click", () => {
+  setAutoRotate(!autoRotate);
 });
+document.getElementById("settings-rotate-toggle").addEventListener("change", (e) => {
+  setAutoRotate(e.target.checked);
+});
+
+// --- Einstellungen: Rad oben rechts, Rotation + GPA (Gewinn pro Arzt) ---
+document.getElementById("settings-toggle").addEventListener("click", () => {
+  document.getElementById("settings-panel").hidden = false;
+});
+document.getElementById("settings-close").addEventListener("click", () => {
+  document.getElementById("settings-panel").hidden = true;
+});
+document.addEventListener("click", (e) => {
+  const panel = document.getElementById("settings-panel");
+  if (!panel.hidden && !panel.contains(e.target) && e.target.id !== "settings-toggle") {
+    panel.hidden = true;
+  }
+});
+
+function setGewinnProArzt(value) {
+  gewinnProArzt = Math.max(0, Number(value) || 0);
+  localStorage.setItem("medipulse_gpa", String(gewinnProArzt));
+  document.getElementById("gpa-slider").value = gewinnProArzt;
+  document.getElementById("gpa-input").value = gewinnProArzt;
+  renderList();
+  if (currentPopupDoctor) openDoctorPopup(currentPopupDoctor, [currentPopupDoctor.lng, currentPopupDoctor.lat]);
+}
+
+document.getElementById("gpa-slider").addEventListener("input", (e) => setGewinnProArzt(e.target.value));
+document.getElementById("gpa-input").addEventListener("input", (e) => setGewinnProArzt(e.target.value));
+document.getElementById("gpa-slider").value = gewinnProArzt;
+document.getElementById("gpa-input").value = gewinnProArzt;

@@ -23,8 +23,36 @@
       <div class="stat status-lead"><span class="stat-value" id="stat-lead">0</span><span class="stat-label">Leads</span></div>
     </div>
 
+    <button id="settings-toggle" class="icon-btn" title="Einstellungen">⚙️</button>
     <button id="sidebar-toggle" class="icon-btn" title="Liste ein-/ausblenden">☰</button>
   </header>
+
+  <div class="settings-panel" id="settings-panel" hidden>
+    <div class="settings-panel-header">
+      <span>Einstellungen</span>
+      <button id="settings-close" class="icon-btn" title="Schließen">×</button>
+    </div>
+
+    <div class="settings-row">
+      <span class="settings-label">Automatische Rotation</span>
+      <label class="switch">
+        <input type="checkbox" id="settings-rotate-toggle" checked>
+        <span class="switch-slider"></span>
+      </label>
+    </div>
+
+    <div class="settings-divider"></div>
+
+    <div class="gpa-block">
+      <div class="gpa-title">GPA</div>
+      <div class="gpa-sub">Gewinn pro Arzt</div>
+      <input type="range" id="gpa-slider" class="gpa-slider" min="0" max="300" step="5" value="50">
+      <div class="gpa-input-row">
+        <input type="number" id="gpa-input" class="gpa-input" min="0" max="2000" step="5" value="50">
+        <span class="gpa-unit">€ / Arzt</span>
+      </div>
+    </div>
+  </div>
 
   <div class="app">
     <aside class="sidebar" id="sidebar">
