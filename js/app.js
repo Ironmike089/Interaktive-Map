@@ -71,6 +71,8 @@ let selectedId = null;
 let currentPopupDoctor = null;
 
 let gewinnProArzt = Number(localStorage.getItem("medipulse_gpa")) || 50;
+let minGroesse = 0;
+let maxGroesseInData = 1;
 
 let AERZTE_DATA = [];
 const MAX_LIST_ITEMS = 300;
@@ -149,6 +151,7 @@ function getFilteredData() {
   return AERZTE_DATA.filter((d) => {
     if (!activeStatuses.has(d.status)) return false;
     if (!activeKategorien.has(d.kategorie || "sonstige")) return false;
+    if ((d.groesse || 1) < minGroesse) return false;
     if (!term) return true;
     return (
       d.name.toLowerCase().includes(term) ||
@@ -197,6 +200,7 @@ setLoadingState(true);
 loadAerzteData().then((data) => {
   AERZTE_DATA = data;
   dataReady = true;
+  maxGroesseInData = data.reduce((max, d) => Math.max(max, d.groesse || 1), 1);
   setLoadingState(false);
   // Liste/Statistik sofort anzeigen, unabhängig davon ob die Kartenkacheln
   // (externe Netzwerkabfrage) schon geladen sind.
@@ -560,6 +564,17 @@ function sizePercent(n) {
   return Math.max(4, Math.min(100, p * 100));
 }
 
+// Umkehrung von sizePercent für den Größen-Filter-Regler: aus einem
+// Schieberegler-Wert (0-100) wird die Mindest-Praxisgröße, ab der ein Arzt
+// noch angezeigt wird — auf derselben Log-Skala wie der Größen-Balken im
+// Popup, damit sich der Regler proportional zur tatsächlichen Verteilung
+// "anfühlt" statt am unteren Ende (wo die meisten Praxen liegen) zu grob zu sein.
+function groesseThresholdFromPercent(pct) {
+  if (pct <= 0) return 0;
+  const maxSize = Math.max(1, maxGroesseInData);
+  return Math.round(Math.exp((pct / 100) * Math.log(maxSize + 1)) - 1);
+}
+
 function sizeGaugeHtml(groesse) {
   if (!groesse || groesse < 1) return "";
   const pct = sizePercent(groesse);
@@ -770,3 +785,19 @@ document.getElementById("gpa-slider").addEventListener("input", (e) => setGewinn
 document.getElementById("gpa-input").addEventListener("input", (e) => setGewinnProArzt(e.target.value));
 document.getElementById("gpa-slider").value = gewinnProArzt;
 document.getElementById("gpa-input").value = gewinnProArzt;
+
+// --- Filter-Kacheln auf-/zuklappen (Status, Fachrichtung & MVZ, Größe) ---
+document.querySelectorAll(".chevron-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const body = document.getElementById(btn.dataset.target);
+    const collapsed = body.classList.toggle("collapsed");
+    btn.setAttribute("aria-expanded", String(!collapsed));
+  });
+});
+
+// --- Größen-Filter (dritte Filter-Kategorie): Regler mit Punkt, Log-Skala ---
+document.getElementById("groesse-slider").addEventListener("input", (e) => {
+  minGroesse = groesseThresholdFromPercent(Number(e.target.value));
+  document.getElementById("groesse-value-label").textContent = minGroesse <= 1 ? "1" : minGroesse;
+  applyFilters();
+});

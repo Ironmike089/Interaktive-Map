@@ -23,6 +23,7 @@
       <div class="stat status-lead"><span class="stat-value" id="stat-lead">0</span><span class="stat-label">Leads</span></div>
     </div>
 
+    <img src="assets/medipulse-logo.png" alt="Medipulse" class="topbar-logo" id="topbar-logo" onerror="this.style.display='none'">
     <button id="settings-toggle" class="icon-btn" title="Einstellungen">⚙️</button>
     <button id="sidebar-toggle" class="icon-btn" title="Liste ein-/ausblenden">☰</button>
   </header>
@@ -61,22 +62,41 @@
       </div>
 
       <div class="sidebar-section filters">
-        <div class="filter-group-label">Status</div>
-        <label class="chip chip-kunde"><input type="checkbox" data-status="kunde" checked> Kunde</label>
-        <label class="chip chip-interessent"><input type="checkbox" data-status="interessent" checked> Interessent</label>
-        <label class="chip chip-lead"><input type="checkbox" data-status="lead" checked> Lead</label>
-        <label class="chip chip-inaktiv"><input type="checkbox" data-status="inaktiv" checked> Inaktiv</label>
+        <div class="filter-group-label">
+          <button type="button" class="chevron-btn" data-target="status-body" aria-expanded="true"><span class="chevron"></span></button>
+          <span class="filter-group-title">Status</span>
+        </div>
+        <div class="filter-group-body" id="status-body">
+          <label class="chip chip-kunde"><input type="checkbox" data-status="kunde" checked> Kunde</label>
+          <label class="chip chip-interessent"><input type="checkbox" data-status="interessent" checked> Interessent</label>
+          <label class="chip chip-lead"><input type="checkbox" data-status="lead" checked> Lead</label>
+          <label class="chip chip-inaktiv"><input type="checkbox" data-status="inaktiv" checked> Inaktiv</label>
+        </div>
       </div>
 
       <div class="sidebar-section filters kategorie-filters">
         <div class="filter-group-label">
-          Fachrichtung &amp; MVZ
+          <button type="button" class="chevron-btn" data-target="kategorie-body" aria-expanded="true"><span class="chevron"></span></button>
+          <span class="filter-group-title">Fachrichtung &amp; MVZ</span>
           <span class="filter-group-actions">
             <button type="button" id="kategorie-all">alle</button>
             <button type="button" id="kategorie-none">keine</button>
           </span>
         </div>
-        <div id="kategorie-list" class="kategorie-list"></div>
+        <div class="filter-group-body" id="kategorie-body">
+          <div id="kategorie-list" class="kategorie-list"></div>
+        </div>
+      </div>
+
+      <div class="sidebar-section filters groesse-filter">
+        <div class="filter-group-label">
+          <button type="button" class="chevron-btn" data-target="groesse-body" aria-expanded="true"><span class="chevron"></span></button>
+          <span class="filter-group-title">Praxisgröße</span>
+        </div>
+        <div class="filter-group-body" id="groesse-body">
+          <div class="groesse-value">Ab <strong id="groesse-value-label">1</strong> Arzt/Ärzten</div>
+          <input type="range" id="groesse-slider" class="groesse-slider" min="0" max="100" step="1" value="0">
+        </div>
       </div>
 
       <div class="sidebar-section list-wrap">
