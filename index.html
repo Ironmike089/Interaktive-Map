@@ -96,6 +96,24 @@
         <div class="filter-group-body" id="groesse-body">
           <div class="groesse-value">Ab <strong id="groesse-value-label">1</strong> Arzt/Ärzten</div>
           <input type="range" id="groesse-slider" class="groesse-slider" min="0" max="100" step="1" value="0">
+          <div class="groesse-input-row">
+            <input type="number" id="groesse-input" class="groesse-input" min="0" step="1" value="1">
+            <span class="groesse-input-unit">Ärzte</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section filters bundesland-filter">
+        <div class="filter-group-label">
+          <button type="button" class="chevron-btn" data-target="bundesland-body" aria-expanded="false"><span class="chevron"></span></button>
+          <span class="filter-group-title">Bundesland</span>
+          <span class="filter-group-actions">
+            <button type="button" id="bundesland-all">alle</button>
+            <button type="button" id="bundesland-none">keine</button>
+          </span>
+        </div>
+        <div class="filter-group-body collapsed" id="bundesland-body">
+          <div id="bundesland-list" class="kategorie-list"></div>
         </div>
       </div>
 

@@ -61,8 +61,28 @@ const KATEGORIE_LABELS = {
 };
 const KATEGORIE_KEYS = Object.keys(KATEGORIE_LABELS);
 
+const BUNDESLAND_LIST = [
+  "Baden-Württemberg",
+  "Bayern",
+  "Berlin",
+  "Brandenburg",
+  "Bremen",
+  "Hamburg",
+  "Hessen",
+  "Mecklenburg-Vorpommern",
+  "Niedersachsen",
+  "Nordrhein-Westfalen",
+  "Rheinland-Pfalz",
+  "Saarland",
+  "Sachsen",
+  "Sachsen-Anhalt",
+  "Schleswig-Holstein",
+  "Thüringen",
+];
+
 let activeStatuses = new Set(["kunde", "interessent", "lead", "inaktiv"]);
 let activeKategorien = new Set(KATEGORIE_KEYS);
+let activeBundeslaender = new Set(BUNDESLAND_LIST);
 let searchTerm = "";
 let autoRotate = true;
 let userInteracting = false;
@@ -151,6 +171,7 @@ function getFilteredData() {
   return AERZTE_DATA.filter((d) => {
     if (!activeStatuses.has(d.status)) return false;
     if (!activeKategorien.has(d.kategorie || "sonstige")) return false;
+    if (d.bundesland && !activeBundeslaender.has(d.bundesland)) return false;
     if ((d.groesse || 1) < minGroesse) return false;
     if (!term) return true;
     return (
@@ -278,6 +299,36 @@ document.getElementById("kategorie-all").addEventListener("click", () => {
 document.getElementById("kategorie-none").addEventListener("click", () => {
   activeKategorien = new Set();
   document.querySelectorAll('#kategorie-list input[type="checkbox"]').forEach((cb) => (cb.checked = false));
+  applyFilters();
+});
+
+function renderBundeslandFilters() {
+  const container = document.getElementById("bundesland-list");
+  container.innerHTML = BUNDESLAND_LIST.map((name) => `
+    <label class="kategorie-chip">
+      <input type="checkbox" data-bundesland="${escapeHtml(name)}" checked>
+      ${escapeHtml(name)}
+    </label>
+  `).join("");
+  container.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const name = cb.dataset.bundesland;
+      if (cb.checked) activeBundeslaender.add(name);
+      else activeBundeslaender.delete(name);
+      applyFilters();
+    });
+  });
+}
+renderBundeslandFilters();
+
+document.getElementById("bundesland-all").addEventListener("click", () => {
+  activeBundeslaender = new Set(BUNDESLAND_LIST);
+  document.querySelectorAll('#bundesland-list input[type="checkbox"]').forEach((cb) => (cb.checked = true));
+  applyFilters();
+});
+document.getElementById("bundesland-none").addEventListener("click", () => {
+  activeBundeslaender = new Set();
+  document.querySelectorAll('#bundesland-list input[type="checkbox"]').forEach((cb) => (cb.checked = false));
   applyFilters();
 });
 
@@ -575,6 +626,14 @@ function groesseThresholdFromPercent(pct) {
   return Math.round(Math.exp((pct / 100) * Math.log(maxSize + 1)) - 1);
 }
 
+// Umkehrung von groesseThresholdFromPercent, damit sich der Regler
+// mitbewegt, wenn die Mindestgröße direkt eingetippt wird.
+function groessePercentFromThreshold(n) {
+  if (n <= 0) return 0;
+  const maxSize = Math.max(1, maxGroesseInData);
+  return Math.max(0, Math.min(100, (Math.log(n + 1) / Math.log(maxSize + 1)) * 100));
+}
+
 function sizeGaugeHtml(groesse) {
   if (!groesse || groesse < 1) return "";
   const pct = sizePercent(groesse);
@@ -795,9 +854,19 @@ document.querySelectorAll(".chevron-btn").forEach((btn) => {
   });
 });
 
-// --- Größen-Filter (dritte Filter-Kategorie): Regler mit Punkt, Log-Skala ---
+// --- Größen-Filter (dritte Filter-Kategorie): Regler mit Punkt, Log-Skala,
+// plus Zahlenfeld zum direkten Eintippen (bidirektional mit dem Regler synchron) ---
 document.getElementById("groesse-slider").addEventListener("input", (e) => {
   minGroesse = groesseThresholdFromPercent(Number(e.target.value));
   document.getElementById("groesse-value-label").textContent = minGroesse <= 1 ? "1" : minGroesse;
+  document.getElementById("groesse-input").value = minGroesse <= 1 ? 1 : minGroesse;
+  applyFilters();
+});
+
+document.getElementById("groesse-input").addEventListener("input", (e) => {
+  const n = Math.max(0, Math.round(Number(e.target.value) || 0));
+  minGroesse = n;
+  document.getElementById("groesse-value-label").textContent = minGroesse <= 1 ? "1" : minGroesse;
+  document.getElementById("groesse-slider").value = groessePercentFromThreshold(n);
   applyFilters();
 });

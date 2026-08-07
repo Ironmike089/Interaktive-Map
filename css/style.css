@@ -254,8 +254,20 @@ html, body {
 .chip-lead { border-color: color-mix(in srgb, var(--c-lead) 50%, var(--border)); }
 .chip-inaktiv { border-color: color-mix(in srgb, var(--c-inaktiv) 50%, var(--border)); }
 
-.kategorie-filters { max-height: 220px; display: flex; flex-direction: column; flex-wrap: nowrap; }
-.kategorie-filters .filter-group-body { flex: 1; min-height: 0; overflow: hidden; flex-wrap: nowrap; }
+.kategorie-filters, .bundesland-filter { max-height: 220px; display: flex; flex-direction: column; flex-wrap: nowrap; }
+.kategorie-filters .filter-group-body, .bundesland-filter .filter-group-body { flex: 1; min-height: 0; overflow: hidden; flex-wrap: nowrap; }
+
+.groesse-input-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.groesse-input {
+  width: 70px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 13px;
+}
+.groesse-input-unit { font-size: 12px; color: var(--text-dim); }
 .kategorie-list {
   display: flex;
   flex-wrap: wrap;
