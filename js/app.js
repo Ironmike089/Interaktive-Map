@@ -557,6 +557,38 @@ function setupMapLayers() {
     paint: { "text-color": "#ffffff" },
   });
 
+  // Verbindungslinien zu anderen Standorten derselben Kette (z.B. Helios,
+  // Sana) — leer bis eine Praxis mit "kette" ausgewählt wird, siehe
+  // updateConnections(). Vor dem eigentlichen Pin-Layer eingefügt, damit die
+  // Pins über den Linien/Ringen liegen statt darunter zu verschwinden.
+  map.addSource("connections", { type: "geojson", data: EMPTY_FC });
+  map.addLayer({
+    id: "connections-lines",
+    type: "line",
+    source: "connections",
+    layout: { "line-cap": "round" },
+    paint: {
+      "line-color": "#ffb347",
+      "line-width": 1.6,
+      "line-opacity": 0.7,
+      "line-dasharray": [2, 1.5],
+    },
+  });
+  map.addSource("connections-targets", { type: "geojson", data: EMPTY_FC });
+  map.addLayer({
+    id: "connections-targets-circles",
+    type: "circle",
+    source: "connections-targets",
+    paint: {
+      "circle-radius": 12,
+      "circle-color": "#ffb347",
+      "circle-opacity": 0.22,
+      "circle-stroke-width": 2,
+      "circle-stroke-color": "#ffb347",
+      "circle-stroke-opacity": 0.9,
+    },
+  });
+
   map.addLayer({
     id: "unclustered-point",
     type: "symbol",
@@ -602,6 +634,54 @@ function setupMapLayers() {
 function refreshSource() {
   const src = map.getSource("aerzte");
   if (src) src.setData(toGeoJSON(getFilteredData()));
+}
+
+// --- Verbindungen zwischen Standorten derselben Kette (z.B. Helios, Sana) ---
+const EMPTY_FC = { type: "FeatureCollection", features: [] };
+const MAX_CONNECTIONS = 80;
+
+function getConnectedDoctors(d) {
+  if (!d || !d.kette) return { kette: "", items: [], total: 0 };
+  const ownKey = `${d.lat.toFixed(4)},${d.lng.toFixed(4)}`;
+  const seen = new Set([ownKey]);
+  const items = [];
+  for (const other of AERZTE_DATA) {
+    if (other.kette !== d.kette) continue;
+    const key = `${other.lat.toFixed(4)},${other.lng.toFixed(4)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push(other);
+  }
+  return { kette: d.kette, items: items.slice(0, MAX_CONNECTIONS), total: items.length };
+}
+
+function updateConnections(d) {
+  const lineSrc = map.getSource("connections");
+  const targetSrc = map.getSource("connections-targets");
+  if (!lineSrc || !targetSrc) return { total: 0 };
+  const { items, total } = getConnectedDoctors(d);
+  if (!items.length) {
+    lineSrc.setData(EMPTY_FC);
+    targetSrc.setData(EMPTY_FC);
+    return { total: 0 };
+  }
+  lineSrc.setData({
+    type: "FeatureCollection",
+    features: items.map((t) => ({
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: [[d.lng, d.lat], [t.lng, t.lat]] },
+      properties: {},
+    })),
+  });
+  targetSrc.setData({
+    type: "FeatureCollection",
+    features: items.map((t) => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [t.lng, t.lat] },
+      properties: { id: t.id },
+    })),
+  });
+  return { total, shown: items.length };
 }
 
 // Grobe Näherung für die "Praxisgröße": Anzahl Ärzte, die laut Datensatz an
@@ -660,6 +740,7 @@ function openDoctorPopup(d, coords) {
   // ohne eigene Routing-/Verkehrsdaten nicht möglich, daher der Deep-Link.
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}&travelmode=driving`;
   const kategorie = d.kategorie || "sonstige";
+  const conn = updateConnections(d);
   const html = `
     <div class="popup-title">${escapeHtml(d.name)}</div>
     <div class="popup-sub">
@@ -667,6 +748,7 @@ function openDoctorPopup(d, coords) {
       ${escapeHtml(KATEGORIE_LABELS[kategorie])} · ${escapeHtml(d.fachrichtung)} · ${escapeHtml(d.stadt)}
     </div>
     ${d.einrichtung ? `<div class="popup-row">🏥 ${escapeHtml(d.einrichtung)}${d.kette ? ` <span style="color:var(--text-dim)">(${escapeHtml(d.kette)})</span>` : ""}</div>` : ""}
+    ${conn.total > 0 ? `<div class="popup-row connections-row">🔗 ${conn.total.toLocaleString("de-DE")} weitere Standorte der Kette ${escapeHtml(d.kette)} auf der Karte hervorgehoben${conn.total > conn.shown ? ` (${conn.shown} angezeigt)` : ""}</div>` : ""}
     ${sizeGaugeHtml(d.groesse)}
     ${earningsRowHtml(d)}
     <div class="popup-row">📍 ${escapeHtml(d.strasse)}, ${escapeHtml(d.plz)} ${escapeHtml(d.stadt)}</div>
@@ -684,7 +766,10 @@ function openDoctorPopup(d, coords) {
   popup.setLngLat(coords).setHTML(html).addTo(map);
 }
 
-popup.on("close", () => { currentPopupDoctor = null; });
+popup.on("close", () => {
+  currentPopupDoctor = null;
+  updateConnections(null);
+});
 
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, (c) => ({

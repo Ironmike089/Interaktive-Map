@@ -334,6 +334,7 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 .earnings-row { font-size: 12.5px; font-weight: 600; color: var(--s-kunde); margin: 0 0 14px; }
+.connections-row { font-size: 12.5px; font-weight: 600; color: #ffb347; margin: 0 0 14px; }
 .li-earnings { color: var(--s-kunde); font-weight: 600; }
 .detail-grid { display: flex; flex-direction: column; gap: 10px; margin: 0 0 14px; }
 .detail-grid dt { font-family: "IBM Plex Mono", monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 2px; }
@@ -482,6 +483,7 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
       <div class="size-bar"><div class="size-arrow" id="d-groesse-arrow"></div></div>
     </div>
     <div class="earnings-row" id="d-earnings"></div>
+    <div class="connections-row" id="d-connections" hidden></div>
     <dl class="detail-grid">
       <div><dt>Adresse</dt><dd id="d-address"></dd></div>
       <div id="d-contact-row"><dt>Kontakt</dt><dd id="d-contact"></dd></div>
@@ -494,6 +496,7 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
 <script>
 let AERZTE_DATA = [];
 const MAX_LIST_ITEMS = 300;
+let lastConnectionsInfo = { total: 0 };
 
 const STATUS_COLOR = { kunde: 0x34c77b, interessent: 0xf2a93b, lead: 0x6c8cff, inaktiv: 0x6b7893 };
 const STATUS_LABEL = { kunde: "Kunde", interessent: "Interessent", lead: "Lead", inaktiv: "Inaktiv" };
@@ -736,6 +739,59 @@ async function loadThree() {
   selectedSprite.visible = false;
   globeGroup.add(selectedCore, selectedSprite);
 
+  // Verbindungslinien zu anderen Standorten derselben Kette (z.B. Helios,
+  // Sana): Bogenlinien über die Kugeloberfläche plus ein Glow-Sprite je
+  // Zielstandort. Nur bis zu MAX_CONNECTIONS gleichzeitig, sonst würde eine
+  // große Kette (Helios: >1000 Ärzte) das Bild zuspammen und die Framerate
+  // einbrechen lassen.
+  const MAX_CONNECTIONS = 60;
+  const connectionsGroup = new THREE.Group();
+  globeGroup.add(connectionsGroup);
+  const connectionLineMat = new THREE.LineBasicMaterial({ color: 0xffb347, transparent: true, opacity: 0.55 });
+
+  function clearConnections() {
+    while (connectionsGroup.children.length) {
+      const obj = connectionsGroup.children.pop();
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material && obj.material !== connectionLineMat) obj.material.dispose();
+    }
+  }
+
+  function showConnections(doctor) {
+    clearConnections();
+    if (!doctor || !doctor.kette) return { total: 0 };
+    const idx = idToIndex.get(doctor.id);
+    const basePos = new THREE.Vector3(allPositions[idx * 3], allPositions[idx * 3 + 1], allPositions[idx * 3 + 2]);
+    const seen = new Set([`${doctor.lat.toFixed(4)},${doctor.lng.toFixed(4)}`]);
+    const targets = [];
+    for (const other of AERZTE_DATA) {
+      if (other.kette !== doctor.kette) continue;
+      const key = `${other.lat.toFixed(4)},${other.lng.toFixed(4)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      targets.push(other);
+    }
+    const shown = targets.slice(0, MAX_CONNECTIONS);
+    for (const t of shown) {
+      const tIdx = idToIndex.get(t.id);
+      if (tIdx == null) continue;
+      const tPos = new THREE.Vector3(allPositions[tIdx * 3], allPositions[tIdx * 3 + 1], allPositions[tIdx * 3 + 2]);
+      const angle = basePos.angleTo(tPos);
+      const mid = basePos.clone().add(tPos).normalize().multiplyScalar(1.012 + angle * 0.22);
+      const curve = new THREE.QuadraticBezierCurve3(basePos, mid, tPos);
+      const geo = new THREE.BufferGeometry().setFromPoints(curve.getPoints(28));
+      connectionsGroup.add(new THREE.Line(geo, connectionLineMat));
+
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: glowTexture(0xffb347), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      }));
+      sprite.position.copy(tPos);
+      sprite.scale.set(0.09, 0.09, 1);
+      connectionsGroup.add(sprite);
+    }
+    return { total: targets.length, shown: shown.length, kette: doctor.kette };
+  }
+
   function onResize() {
     const w = window.innerWidth, h = window.innerHeight;
     renderer.setSize(w, h, false);
@@ -852,9 +908,17 @@ async function loadThree() {
     selectedSprite.position.copy(basePos);
     selectedCore.visible = true;
     selectedSprite.visible = true;
+    lastConnectionsInfo = showConnections(doctor);
     showDetail(doctor);
     highlightList(id);
     if (doFly) flyTo(basePos);
+  }
+
+  function deselectDoctor() {
+    selectedCore.visible = false;
+    selectedSprite.visible = false;
+    clearConnections();
+    lastConnectionsInfo = { total: 0 };
   }
 
   function flyTo(basePos) {
@@ -896,7 +960,7 @@ async function loadThree() {
   }
 
   // --- UI: search / filters / list / detail (DOM-side, independent of three.js internals) ---
-  window.__medipulse = { selectDoctor, setVisible };
+  window.__medipulse = { selectDoctor, setVisible, deselectDoctor };
   applyFilters();
 })();
 
@@ -1047,6 +1111,15 @@ function showDetail(d) {
   document.getElementById("d-earnings").textContent =
     `💰 ${((d.groesse || 1) * gewinnProArzt).toLocaleString("de-DE")} € möglicher Umsatz`;
 
+  const connRow = document.getElementById("d-connections");
+  if (lastConnectionsInfo && lastConnectionsInfo.total > 0) {
+    const extra = lastConnectionsInfo.total > lastConnectionsInfo.shown ? ` (${lastConnectionsInfo.shown} angezeigt)` : "";
+    connRow.textContent = `🔗 ${lastConnectionsInfo.total.toLocaleString("de-DE")} weitere Standorte der Kette ${lastConnectionsInfo.kette} hervorgehoben${extra}`;
+    connRow.hidden = false;
+  } else {
+    connRow.hidden = true;
+  }
+
   const contactRow = document.getElementById("d-contact-row");
   const contactParts = [d.ansprechpartner, d.telefon, d.email].filter(Boolean);
   if (contactParts.length) { document.getElementById("d-contact").textContent = contactParts.join(" · "); contactRow.hidden = false; }
@@ -1068,6 +1141,7 @@ document.getElementById("detail-close").addEventListener("click", () => {
   document.getElementById("detail").hidden = true;
   selectedId = null;
   document.querySelectorAll(".list-item").forEach((li) => li.classList.remove("active"));
+  window.__medipulse && window.__medipulse.deselectDoctor();
 });
 
 // --- Einstellungen: Rad oben rechts, Rotation + GPA (Gewinn pro Arzt) ---
