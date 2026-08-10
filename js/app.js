@@ -1042,6 +1042,9 @@ document.addEventListener("click", (e) => {
   // meldet und das Panel sofort wieder schließt. composedPath() bildet
   // den DOM-Pfad zum Zeitpunkt des Klicks ab und bleibt davon unberührt.
   const path = e.composedPath();
+  // Klicks im Notiz-Editor (eigenes Overlay über dem Statistik-Panel)
+  // dürfen das dahinterliegende Panel nicht schließen.
+  if (path.includes(document.getElementById("note-editor-backdrop"))) return;
   [
     ["settings-panel", "settings-toggle"],
     ["auth-panel", "user-badge"],
@@ -1445,6 +1448,7 @@ const STAT_RANGE_HINT = {
 let statsRange = "week";
 let statsMetric = "total";
 let pendingStreakPop = null;
+let statsView = "mine"; // "mine" | "rankings"
 
 function statsKey(user) {
   return `medipulse_stats_${user}`;
@@ -1516,6 +1520,25 @@ function longestStreakCount(history, key) {
   return longest;
 }
 
+let streakCelebrationTimer = null;
+function celebrateStreak(categoryLabel, streak) {
+  const overlay = document.getElementById("streak-celebration");
+  const flame = overlay.querySelector(".streak-celebration-flame");
+  const textEl = document.getElementById("streak-celebration-text");
+  textEl.textContent = `${categoryLabel} · ${streak}-Tage-Streak`;
+  overlay.hidden = false;
+  // Animation neu starten, falls kurz hintereinander mehrfach ausgelöst
+  flame.style.animation = "none";
+  textEl.style.animation = "none";
+  void overlay.offsetWidth;
+  flame.style.animation = "";
+  textEl.style.animation = "";
+  clearTimeout(streakCelebrationTimer);
+  streakCelebrationTimer = setTimeout(() => {
+    overlay.hidden = true;
+  }, 1750);
+}
+
 function bumpStat(key, delta) {
   if (!currentUser) return;
   const stats = loadStats(currentUser);
@@ -1524,15 +1547,27 @@ function bumpStat(key, delta) {
   const before = stats.history[today][key] || 0;
   const after = Math.max(0, before + delta);
   stats.history[today][key] = after;
-  if (before === 0 && after > 0) pendingStreakPop = key;
+  if (before === 0 && after > 0) {
+    pendingStreakPop = key;
+    const cat = STAT_CATEGORIES.find((c) => c.key === key);
+    celebrateStreak(cat.label, currentStreak(stats.history, key));
+  }
   saveStats(currentUser, stats);
   renderSalesStatsPanel();
 }
 
-function addStatNote(text) {
-  if (!currentUser || !text.trim()) return;
+function addStatNote(title, text) {
+  if (!currentUser || !title.trim()) return;
   const stats = loadStats(currentUser);
-  stats.notes.unshift({ date: new Date().toLocaleDateString("de-DE"), text: text.trim() });
+  stats.notes.unshift({ date: new Date().toLocaleDateString("de-DE"), title: title.trim(), text: text.trim() });
+  saveStats(currentUser, stats);
+  renderSalesStatsPanel();
+}
+
+function deleteStatNote(index) {
+  if (!currentUser) return;
+  const stats = loadStats(currentUser);
+  stats.notes.splice(index, 1);
   saveStats(currentUser, stats);
   renderSalesStatsPanel();
 }
@@ -1682,6 +1717,10 @@ function renderStatsChart(history) {
 }
 
 function renderSalesStatsPanel() {
+  document.querySelectorAll(".stats-view-tab").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.view === statsView);
+  });
+
   const loggedOutBox = document.getElementById("sales-stats-logged-out");
   const body = document.getElementById("sales-stats-body");
   if (!currentUser) {
@@ -1691,6 +1730,17 @@ function renderSalesStatsPanel() {
   }
   loggedOutBox.hidden = true;
   body.hidden = false;
+
+  if (statsView === "rankings") {
+    body.innerHTML = `
+      <div class="stats-rankings-placeholder">
+        <span class="stats-rankings-emoji">🏆</span>
+        Rankings kommen bald!<br>
+        Hier kannst du dich dann mit deinen Kolleg:innen vergleichen.
+      </div>`;
+    return;
+  }
+
   const stats = loadStats(currentUser);
 
   const streakRows = STAT_CATEGORIES.map((c) => {
@@ -1731,7 +1781,20 @@ function renderSalesStatsPanel() {
 
   const noteItems = stats.notes
     .slice(0, 20)
-    .map((n) => `<li class="stat-note-item"><span class="stat-note-date">${escapeHtml(n.date)}</span>${escapeHtml(n.text)}</li>`)
+    .map((n, i) => {
+      const title = n.title || (n.text ? n.text.slice(0, 40) : "(ohne Titel)");
+      return `
+      <li class="stat-note-item">
+        <div class="stat-note-row">
+          <button type="button" class="stat-note-title-btn" data-index="${i}">
+            <span class="stat-note-date">${escapeHtml(n.date)}</span>
+            <span class="stat-note-title-text">${escapeHtml(title)}</span>
+          </button>
+          <button type="button" class="stat-note-delete-btn" data-index="${i}" title="Notiz löschen">×</button>
+        </div>
+        <div class="stat-note-full-text" hidden>${escapeHtml(n.text || "(keine weiteren Details)")}</div>
+      </li>`;
+    })
     .join("");
 
   body.innerHTML = `
@@ -1748,10 +1811,7 @@ function renderSalesStatsPanel() {
     <div class="stat-chart-wrap" id="stat-chart-wrap"></div>
     <div class="settings-divider"></div>
     <div class="stat-notes-title">Notizen</div>
-    <div class="stat-note-input-row">
-      <input type="text" id="stat-note-input" class="stat-note-input" placeholder="z.B. Termin bei Dr. Müller vereinbart">
-      <button type="button" id="stat-note-add" class="stat-note-add-btn">+</button>
-    </div>
+    <button type="button" id="stat-note-open" class="stat-note-open-btn">+ Notiz hinzufügen</button>
     <ul class="stat-note-list">${noteItems || '<li class="stat-note-item">Noch keine Notizen.</li>'}</ul>
   `;
 
@@ -1772,20 +1832,52 @@ function renderSalesStatsPanel() {
       renderSalesStatsPanel();
     });
   });
-  const noteInput = document.getElementById("stat-note-input");
-  document.getElementById("stat-note-add").addEventListener("click", () => {
-    addStatNote(noteInput.value);
-    noteInput.value = "";
+  const noteOpenBtn = document.getElementById("stat-note-open");
+  if (noteOpenBtn) noteOpenBtn.addEventListener("click", openNoteEditor);
+  body.querySelectorAll(".stat-note-title-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const fullText = btn.closest(".stat-note-item").querySelector(".stat-note-full-text");
+      fullText.hidden = !fullText.hidden;
+    });
   });
-  noteInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      addStatNote(noteInput.value);
-      noteInput.value = "";
-    }
+  body.querySelectorAll(".stat-note-delete-btn").forEach((btn) => {
+    btn.addEventListener("click", () => deleteStatNote(Number(btn.dataset.index)));
   });
 
   renderStatsChart(stats.history);
 }
+
+function openNoteEditor() {
+  document.getElementById("note-editor-title").value = "";
+  document.getElementById("note-editor-text").value = "";
+  document.getElementById("note-editor-backdrop").hidden = false;
+  document.getElementById("note-editor-title").focus();
+}
+function closeNoteEditor() {
+  document.getElementById("note-editor-backdrop").hidden = true;
+}
+document.getElementById("note-editor-close").addEventListener("click", closeNoteEditor);
+document.getElementById("note-editor-backdrop").addEventListener("click", (e) => {
+  if (e.target.id === "note-editor-backdrop") closeNoteEditor();
+});
+document.getElementById("note-editor-save").addEventListener("click", () => {
+  const title = document.getElementById("note-editor-title").value;
+  const text = document.getElementById("note-editor-text").value;
+  if (!title.trim()) {
+    document.getElementById("note-editor-title").focus();
+    return;
+  }
+  addStatNote(title, text);
+  closeNoteEditor();
+});
+
+document.querySelectorAll(".stats-view-tab").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    if (statsView === btn.dataset.view) return;
+    statsView = btn.dataset.view;
+    renderSalesStatsPanel();
+  });
+});
 
 document.getElementById("sales-stats-toggle").addEventListener("click", () => {
   const panel = document.getElementById("sales-stats-panel");

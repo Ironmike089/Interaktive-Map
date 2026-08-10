@@ -281,21 +281,89 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
   font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin: 12px 0 6px;
   font-family: "IBM Plex Mono", monospace;
 }
-.stat-note-input-row { display: flex; gap: 6px; margin-bottom: 8px; }
-.stat-note-input {
-  flex: 1; padding: 8px 9px; border-radius: 8px; border: 1px solid var(--border-solid);
-  background: var(--surface-2); color: var(--text); font-family: "Karla", sans-serif; font-size: 12.5px;
+.stat-note-open-btn {
+  width: 100%; padding: 8px 10px; margin-bottom: 8px; border-radius: 8px;
+  border: 1px dashed var(--border-solid); background: transparent; color: var(--accent);
+  font-size: 12px; font-weight: 700; cursor: pointer; font-family: "Karla", sans-serif;
 }
-.stat-note-add-btn {
-  width: 32px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent);
-  color: #06201d; font-weight: 700; cursor: pointer; font-size: 15px;
-}
-.stat-note-list { list-style: none; margin: 0; padding: 0; max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
+.stat-note-open-btn:hover { background: var(--surface-2); border-style: solid; }
+.stat-note-list { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
 .stat-note-item {
   font-size: 11.5px; padding: 6px 8px; border-radius: 7px; background: var(--surface-2);
   border: 1px solid var(--border-solid); font-family: "Karla", sans-serif;
 }
 .stat-note-date { color: var(--text-dim); font-size: 10px; display: block; margin-bottom: 2px; font-family: "IBM Plex Mono", monospace; }
+.stat-note-row { display: flex; align-items: center; gap: 6px; }
+.stat-note-title-btn {
+  flex: 1; min-width: 0; text-align: left; background: none; border: none;
+  color: var(--text); cursor: pointer; padding: 0; font-family: inherit;
+}
+.stat-note-title-text { display: block; font-size: 11.5px; overflow-wrap: anywhere; }
+.stat-note-delete-btn {
+  flex-shrink: 0; width: 20px; height: 20px; border-radius: 6px; border: 1px solid var(--border-solid);
+  background: var(--surface); color: var(--text-dim); font-size: 13px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.stat-note-delete-btn:hover { background: rgba(226, 85, 74, 0.15); border-color: #e2554a; color: #e2554a; }
+.stat-note-full-text {
+  margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border-solid);
+  font-size: 11.5px; color: var(--text-dim); white-space: pre-wrap; overflow-wrap: anywhere;
+  font-family: "Karla", sans-serif;
+}
+
+.stats-panel-header { margin-bottom: 12px; }
+.stats-view-tabs { display: flex; gap: 6px; }
+.stats-view-tab {
+  padding: 5px 10px; border-radius: 999px; border: 1px solid var(--border-solid);
+  background: var(--surface-2); color: var(--text-dim); font-size: 11.5px; font-weight: 700; cursor: pointer;
+  font-family: "IBM Plex Mono", monospace;
+}
+.stats-view-tab:hover { background: var(--accent-soft); }
+.stats-view-tab.active { background: var(--accent); border-color: var(--accent); color: #06201d; }
+.stats-rankings-placeholder {
+  text-align: center; padding: 32px 10px; color: var(--text-dim); font-size: 12.5px; line-height: 1.6;
+  font-family: "Karla", sans-serif;
+}
+.stats-rankings-placeholder .stats-rankings-emoji { font-size: 40px; display: block; margin-bottom: 10px; }
+
+.note-editor-body { display: flex; flex-direction: column; gap: 10px; margin-top: 2px; }
+.note-editor-textarea {
+  width: 100%; min-height: 120px; padding: 9px 10px; border-radius: 8px;
+  border: 1px solid var(--border-solid); background: var(--surface-2); color: var(--text);
+  font-family: "Karla", sans-serif; font-size: 13px; resize: vertical;
+}
+
+.streak-celebration {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; pointer-events: none;
+}
+.streak-celebration[hidden] { display: none; }
+.streak-celebration-flame {
+  font-size: 150px; line-height: 1;
+  filter: drop-shadow(0 0 50px rgba(255, 140, 0, 0.65));
+  animation: streak-flame-burst 1.7s cubic-bezier(0.22, 1.4, 0.36, 1) forwards;
+}
+.streak-celebration-text {
+  font-size: 22px; font-weight: 800; color: #fff;
+  background: rgba(10, 15, 30, 0.78); border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 10px 24px; border-radius: 999px;
+  opacity: 0; animation: streak-text-fade 1.7s ease forwards; animation-delay: 0.1s;
+  font-family: "Archivo", sans-serif;
+}
+@keyframes streak-flame-burst {
+  0% { transform: scale(0.2) translateY(50px); opacity: 0; }
+  25% { transform: scale(1.3) translateY(0); opacity: 1; }
+  42% { transform: scale(1) translateY(0); opacity: 1; }
+  82% { transform: scale(1) translateY(0); opacity: 1; }
+  100% { transform: scale(0.85) translateY(-40px); opacity: 0; }
+}
+@keyframes streak-text-fade {
+  0% { opacity: 0; transform: translateY(12px); }
+  20% { opacity: 1; transform: translateY(0); }
+  82% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-12px); }
+}
 
 .panel {
   position: absolute; top: 76px; left: 16px; bottom: 16px; width: 320px; z-index: 9;
@@ -599,8 +667,11 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
   </div>
 
   <div class="settings-panel" id="sales-stats-panel" hidden>
-    <div class="settings-panel-header">
-      <span>Meine Statistik</span>
+    <div class="settings-panel-header stats-panel-header">
+      <div class="stats-view-tabs">
+        <button type="button" class="stats-view-tab active" data-view="mine">Meine Statistik</button>
+        <button type="button" class="stats-view-tab" data-view="rankings">🏆 Rankings</button>
+      </div>
       <button id="sales-stats-close" class="ghost-btn" aria-label="Schließen" type="button">×</button>
     </div>
     <div id="sales-stats-logged-out" hidden>
@@ -757,6 +828,25 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
   <span id="route-picking-status"></span>
   <button type="button" class="secondary" id="route-picking-cancel">Abbrechen</button>
   <button type="button" class="primary" id="route-picking-done">Fertig</button>
+</div>
+
+<div class="streak-celebration" id="streak-celebration" hidden>
+  <div class="streak-celebration-flame">🔥</div>
+  <div class="streak-celebration-text" id="streak-celebration-text"></div>
+</div>
+
+<div class="route-planner-backdrop" id="note-editor-backdrop" hidden>
+  <div class="route-planner" id="note-editor">
+    <div class="route-planner-header">
+      <span>Neue Notiz</span>
+      <button id="note-editor-close" class="ghost-btn" aria-label="Abbrechen" type="button">×</button>
+    </div>
+    <div class="note-editor-body">
+      <input type="text" id="note-editor-title" class="auth-input" placeholder="Überschrift, z.B. Termin bei Dr. Müller" maxlength="60" />
+      <textarea id="note-editor-text" class="note-editor-textarea" placeholder="Details (optional)…"></textarea>
+      <button type="button" id="note-editor-save" class="auth-submit-btn">Speichern</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1590,6 +1680,9 @@ document.addEventListener("click", (e) => {
   // aus, sodass panel.contains(e.target) danach fälschlich "außerhalb"
   // meldet und das Panel sofort wieder schließt.
   const path = e.composedPath();
+  // Klicks im Notiz-Editor (eigenes Overlay über dem Statistik-Panel)
+  // dürfen das dahinterliegende Panel nicht schließen.
+  if (path.includes(document.getElementById("note-editor-backdrop"))) return;
   [
     ["settings-panel", "settings-toggle"],
     ["auth-panel", "user-badge"],
@@ -1753,6 +1846,7 @@ const STAT_RANGE_HINT = {
 let statsRange = "week";
 let statsMetric = "total";
 let pendingStreakPop = null;
+let statsView = "mine"; // "mine" | "rankings"
 
 function statsKey(user) {
   return `medipulse_stats_${user}`;
@@ -1824,6 +1918,24 @@ function longestStreakCount(history, key) {
   return longest;
 }
 
+let streakCelebrationTimer = null;
+function celebrateStreak(categoryLabel, streak) {
+  const overlay = document.getElementById("streak-celebration");
+  const flame = overlay.querySelector(".streak-celebration-flame");
+  const textEl = document.getElementById("streak-celebration-text");
+  textEl.textContent = `${categoryLabel} · ${streak}-Tage-Streak`;
+  overlay.hidden = false;
+  flame.style.animation = "none";
+  textEl.style.animation = "none";
+  void overlay.offsetWidth;
+  flame.style.animation = "";
+  textEl.style.animation = "";
+  clearTimeout(streakCelebrationTimer);
+  streakCelebrationTimer = setTimeout(() => {
+    overlay.hidden = true;
+  }, 1750);
+}
+
 function bumpStat(key, delta) {
   if (!currentUser) return;
   const stats = loadStats(currentUser);
@@ -1832,15 +1944,27 @@ function bumpStat(key, delta) {
   const before = stats.history[today][key] || 0;
   const after = Math.max(0, before + delta);
   stats.history[today][key] = after;
-  if (before === 0 && after > 0) pendingStreakPop = key;
+  if (before === 0 && after > 0) {
+    pendingStreakPop = key;
+    const cat = STAT_CATEGORIES.find((c) => c.key === key);
+    celebrateStreak(cat.label, currentStreak(stats.history, key));
+  }
   saveStats(currentUser, stats);
   renderSalesStatsPanel();
 }
 
-function addStatNote(text) {
-  if (!currentUser || !text.trim()) return;
+function addStatNote(title, text) {
+  if (!currentUser || !title.trim()) return;
   const stats = loadStats(currentUser);
-  stats.notes.unshift({ date: new Date().toLocaleDateString("de-DE"), text: text.trim() });
+  stats.notes.unshift({ date: new Date().toLocaleDateString("de-DE"), title: title.trim(), text: text.trim() });
+  saveStats(currentUser, stats);
+  renderSalesStatsPanel();
+}
+
+function deleteStatNote(index) {
+  if (!currentUser) return;
+  const stats = loadStats(currentUser);
+  stats.notes.splice(index, 1);
   saveStats(currentUser, stats);
   renderSalesStatsPanel();
 }
@@ -1990,6 +2114,10 @@ function renderStatsChart(history) {
 }
 
 function renderSalesStatsPanel() {
+  document.querySelectorAll(".stats-view-tab").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.view === statsView);
+  });
+
   const loggedOutBox = document.getElementById("sales-stats-logged-out");
   const body = document.getElementById("sales-stats-body");
   if (!currentUser) {
@@ -1999,6 +2127,17 @@ function renderSalesStatsPanel() {
   }
   loggedOutBox.hidden = true;
   body.hidden = false;
+
+  if (statsView === "rankings") {
+    body.innerHTML = `
+      <div class="stats-rankings-placeholder">
+        <span class="stats-rankings-emoji">🏆</span>
+        Rankings kommen bald!<br>
+        Hier kannst du dich dann mit deinen Kolleg:innen vergleichen.
+      </div>`;
+    return;
+  }
+
   const stats = loadStats(currentUser);
 
   const streakRows = STAT_CATEGORIES.map((c) => {
@@ -2039,7 +2178,20 @@ function renderSalesStatsPanel() {
 
   const noteItems = stats.notes
     .slice(0, 20)
-    .map((n) => `<li class="stat-note-item"><span class="stat-note-date">${esc(n.date)}</span>${esc(n.text)}</li>`)
+    .map((n, i) => {
+      const title = n.title || (n.text ? n.text.slice(0, 40) : "(ohne Titel)");
+      return `
+      <li class="stat-note-item">
+        <div class="stat-note-row">
+          <button type="button" class="stat-note-title-btn" data-index="${i}">
+            <span class="stat-note-date">${esc(n.date)}</span>
+            <span class="stat-note-title-text">${esc(title)}</span>
+          </button>
+          <button type="button" class="stat-note-delete-btn" data-index="${i}" title="Notiz löschen">×</button>
+        </div>
+        <div class="stat-note-full-text" hidden>${esc(n.text || "(keine weiteren Details)")}</div>
+      </li>`;
+    })
     .join("");
 
   body.innerHTML = `
@@ -2056,10 +2208,7 @@ function renderSalesStatsPanel() {
     <div class="stat-chart-wrap" id="stat-chart-wrap"></div>
     <div class="settings-divider"></div>
     <div class="stat-notes-title">Notizen</div>
-    <div class="stat-note-input-row">
-      <input type="text" id="stat-note-input" class="stat-note-input" placeholder="z.B. Termin bei Dr. Müller vereinbart">
-      <button type="button" id="stat-note-add" class="stat-note-add-btn">+</button>
-    </div>
+    <button type="button" id="stat-note-open" class="stat-note-open-btn">+ Notiz hinzufügen</button>
     <ul class="stat-note-list">${noteItems || '<li class="stat-note-item">Noch keine Notizen.</li>'}</ul>
   `;
 
@@ -2080,20 +2229,52 @@ function renderSalesStatsPanel() {
       renderSalesStatsPanel();
     });
   });
-  const noteInput = document.getElementById("stat-note-input");
-  document.getElementById("stat-note-add").addEventListener("click", () => {
-    addStatNote(noteInput.value);
-    noteInput.value = "";
+  const noteOpenBtn = document.getElementById("stat-note-open");
+  if (noteOpenBtn) noteOpenBtn.addEventListener("click", openNoteEditor);
+  body.querySelectorAll(".stat-note-title-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const fullText = btn.closest(".stat-note-item").querySelector(".stat-note-full-text");
+      fullText.hidden = !fullText.hidden;
+    });
   });
-  noteInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      addStatNote(noteInput.value);
-      noteInput.value = "";
-    }
+  body.querySelectorAll(".stat-note-delete-btn").forEach((btn) => {
+    btn.addEventListener("click", () => deleteStatNote(Number(btn.dataset.index)));
   });
 
   renderStatsChart(stats.history);
 }
+
+function openNoteEditor() {
+  document.getElementById("note-editor-title").value = "";
+  document.getElementById("note-editor-text").value = "";
+  document.getElementById("note-editor-backdrop").hidden = false;
+  document.getElementById("note-editor-title").focus();
+}
+function closeNoteEditor() {
+  document.getElementById("note-editor-backdrop").hidden = true;
+}
+document.getElementById("note-editor-close").addEventListener("click", closeNoteEditor);
+document.getElementById("note-editor-backdrop").addEventListener("click", (e) => {
+  if (e.target.id === "note-editor-backdrop") closeNoteEditor();
+});
+document.getElementById("note-editor-save").addEventListener("click", () => {
+  const title = document.getElementById("note-editor-title").value;
+  const text = document.getElementById("note-editor-text").value;
+  if (!title.trim()) {
+    document.getElementById("note-editor-title").focus();
+    return;
+  }
+  addStatNote(title, text);
+  closeNoteEditor();
+});
+
+document.querySelectorAll(".stats-view-tab").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    if (statsView === btn.dataset.view) return;
+    statsView = btn.dataset.view;
+    renderSalesStatsPanel();
+  });
+});
 
 document.getElementById("sales-stats-toggle").addEventListener("click", () => {
   const panel = document.getElementById("sales-stats-panel");

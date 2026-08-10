@@ -52,8 +52,11 @@
   </div>
 
   <div class="settings-panel" id="sales-stats-panel" hidden>
-    <div class="settings-panel-header">
-      <span>Meine Statistik</span>
+    <div class="settings-panel-header stats-panel-header">
+      <div class="stats-view-tabs">
+        <button type="button" class="stats-view-tab active" data-view="mine">Meine Statistik</button>
+        <button type="button" class="stats-view-tab" data-view="rankings">🏆 Rankings</button>
+      </div>
       <button id="sales-stats-close" class="icon-btn" title="Schließen">×</button>
     </div>
     <div id="sales-stats-logged-out" hidden>
@@ -207,6 +210,25 @@
     <span id="route-picking-status"></span>
     <button type="button" class="secondary" id="route-picking-cancel">Abbrechen</button>
     <button type="button" class="primary" id="route-picking-done">Fertig</button>
+  </div>
+
+  <div class="streak-celebration" id="streak-celebration" hidden>
+    <div class="streak-celebration-flame">🔥</div>
+    <div class="streak-celebration-text" id="streak-celebration-text"></div>
+  </div>
+
+  <div class="route-planner-backdrop" id="note-editor-backdrop" hidden>
+    <div class="route-planner" id="note-editor">
+      <div class="route-planner-header">
+        <span>Neue Notiz</span>
+        <button id="note-editor-close" class="icon-btn" title="Abbrechen">×</button>
+      </div>
+      <div class="note-editor-body">
+        <input type="text" id="note-editor-title" class="auth-input" placeholder="Überschrift, z.B. Termin bei Dr. Müller" maxlength="60" />
+        <textarea id="note-editor-text" class="note-editor-textarea" placeholder="Details (optional)…"></textarea>
+        <button type="button" id="note-editor-save" class="auth-submit-btn">Speichern</button>
+      </div>
+    </div>
   </div>
 
   <script src="vendor/maplibre-gl/maplibre-gl.js"></script>
