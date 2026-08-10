@@ -176,6 +176,75 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
 }
 .gpa-unit { font-size: 12px; color: var(--text-dim); }
 
+.user-badge-btn {
+  width: auto; padding: 0 12px; gap: 6px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
+  display: inline-flex; align-items: center;
+}
+
+.auth-panel {
+  position: absolute; top: 76px; right: 16px; z-index: 11; width: 250px;
+  background: var(--surface-solid); border: 1px solid var(--border-solid); border-radius: 16px;
+  padding: 14px; box-shadow: var(--shadow);
+}
+.auth-panel[hidden] { display: none; }
+.auth-input {
+  width: 100%; padding: 9px 10px; margin-bottom: 8px; border-radius: 8px;
+  border: 1px solid var(--border-solid); background: var(--surface-2); color: var(--text);
+  font-family: "Karla", sans-serif; font-size: 13px;
+}
+.auth-submit-btn {
+  width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--accent);
+  background: var(--accent); color: #06201d; font-weight: 700; font-size: 13px; cursor: pointer; margin-bottom: 8px;
+  font-family: "Karla", sans-serif;
+}
+.auth-submit-btn:hover { filter: brightness(1.08); }
+.auth-switch-btn {
+  width: 100%; background: none; border: none; color: var(--accent); font-size: 12px; cursor: pointer; padding: 2px 0;
+  font-family: "Karla", sans-serif;
+}
+.auth-switch-btn:hover { text-decoration: underline; }
+.auth-error {
+  background: rgba(231, 76, 60, 0.15); border: 1px solid #e74c3c; color: #e74c3c;
+  border-radius: 8px; padding: 7px 9px; font-size: 12px; margin-bottom: 8px; font-family: "Karla", sans-serif;
+}
+.auth-current-name { font-size: 13px; margin-bottom: 10px; font-family: "Karla", sans-serif; }
+.auth-hint { font-size: 10.5px; color: var(--text-dim); line-height: 1.4; margin-top: 10px; font-family: "Karla", sans-serif; }
+
+.stat-counter-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 0; border-bottom: 1px solid var(--border-solid);
+}
+.stat-counter-row:last-of-type { border-bottom: none; }
+.stat-counter-label { font-size: 12.5px; display: flex; align-items: center; gap: 6px; font-family: "Karla", sans-serif; }
+.stat-counter-value { font-size: 15px; font-weight: 700; min-width: 28px; text-align: center; font-family: "Archivo", sans-serif; }
+.stat-counter-controls { display: flex; align-items: center; gap: 6px; }
+.stat-counter-btn {
+  width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--border-solid);
+  background: var(--surface-2); color: var(--text); font-size: 15px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.stat-counter-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+.stat-notes-title {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin: 12px 0 6px;
+  font-family: "IBM Plex Mono", monospace;
+}
+.stat-note-input-row { display: flex; gap: 6px; margin-bottom: 8px; }
+.stat-note-input {
+  flex: 1; padding: 8px 9px; border-radius: 8px; border: 1px solid var(--border-solid);
+  background: var(--surface-2); color: var(--text); font-family: "Karla", sans-serif; font-size: 12.5px;
+}
+.stat-note-add-btn {
+  width: 32px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent);
+  color: #06201d; font-weight: 700; cursor: pointer; font-size: 15px;
+}
+.stat-note-list { list-style: none; margin: 0; padding: 0; max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
+.stat-note-item {
+  font-size: 11.5px; padding: 6px 8px; border-radius: 7px; background: var(--surface-2);
+  border: 1px solid var(--border-solid); font-family: "Karla", sans-serif;
+}
+.stat-note-date { color: var(--text-dim); font-size: 10px; display: block; margin-bottom: 2px; font-family: "IBM Plex Mono", monospace; }
+
 .panel {
   position: absolute; top: 76px; left: 16px; bottom: 16px; width: 320px; z-index: 9;
   display: flex; flex-direction: column; gap: 12px;
@@ -449,9 +518,45 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
       <div class="stat s-lead"><span class="stat-n mono" id="n-lead">0</span><span class="stat-l">Leads</span></div>
     </div>
     <img src="data:image/png;base64,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" alt="Medipulse" class="topbar-logo" id="topbar-logo" onerror="this.style.display='none'">
+    <button id="user-badge" class="ghost-btn user-badge-btn" aria-label="Anmelden" type="button">👤 <span id="user-badge-label">Anmelden</span></button>
+    <button id="sales-stats-toggle" class="ghost-btn" aria-label="Meine Statistik" type="button">📊</button>
     <button id="settings-toggle" class="ghost-btn" aria-label="Einstellungen" type="button">⚙</button>
     <button id="panel-toggle" class="ghost-btn" aria-label="Liste ein-/ausblenden" type="button">☰</button>
   </header>
+
+  <div class="auth-panel" id="auth-panel" hidden>
+    <div class="settings-panel-header">
+      <span id="auth-panel-title">Anmelden</span>
+      <button id="auth-close" class="ghost-btn" aria-label="Schließen" type="button">×</button>
+    </div>
+
+    <div id="auth-logged-in" hidden>
+      <div class="auth-current-name">Angemeldet als <strong id="auth-current-name-label"></strong></div>
+      <button type="button" id="auth-logout" class="auth-submit-btn">Abmelden</button>
+    </div>
+
+    <div id="auth-form-wrap">
+      <div class="auth-error" id="auth-error" hidden></div>
+      <input type="text" id="auth-name" class="auth-input" placeholder="Name" autocomplete="username" />
+      <input type="password" id="auth-password" class="auth-input" placeholder="Passwort" autocomplete="current-password" />
+      <button type="button" id="auth-submit" class="auth-submit-btn">Anmelden</button>
+      <button type="button" id="auth-switch-mode" class="auth-switch-btn">Noch kein Konto? Registrieren</button>
+    </div>
+
+    <div class="auth-hint">Nur lokal auf diesem Gerät gespeichert — kein echter Passwortschutz, dient nur zur Zuordnung der eigenen Statistik.</div>
+  </div>
+
+  <div class="settings-panel" id="sales-stats-panel" hidden>
+    <div class="settings-panel-header">
+      <span>Meine Statistik</span>
+      <button id="sales-stats-close" class="ghost-btn" aria-label="Schließen" type="button">×</button>
+    </div>
+    <div id="sales-stats-logged-out" hidden>
+      <div class="auth-hint" style="margin:0 0 10px;">Bitte zuerst anmelden, um deine eigene Statistik zu führen.</div>
+      <button type="button" id="sales-stats-login-btn" class="auth-submit-btn">Jetzt anmelden</button>
+    </div>
+    <div id="sales-stats-body" hidden></div>
+  </div>
 
   <div class="settings-panel" id="settings-panel" hidden>
     <div class="settings-panel-header">
@@ -1411,19 +1516,269 @@ document.getElementById("detail-close").addEventListener("click", () => {
   window.__medipulse && window.__medipulse.deselectDoctor();
 });
 
+function closeAllOverlayPanels() {
+  document.getElementById("settings-panel").hidden = true;
+  document.getElementById("auth-panel").hidden = true;
+  document.getElementById("sales-stats-panel").hidden = true;
+}
+
 // --- Einstellungen: Rad oben rechts, Rotation + GPA (Gewinn pro Arzt) ---
 document.getElementById("settings-toggle").addEventListener("click", () => {
-  document.getElementById("settings-panel").hidden = false;
+  const panel = document.getElementById("settings-panel");
+  const willOpen = panel.hidden;
+  closeAllOverlayPanels();
+  panel.hidden = !willOpen;
 });
 document.getElementById("settings-close").addEventListener("click", () => {
   document.getElementById("settings-panel").hidden = true;
 });
 document.addEventListener("click", (e) => {
-  const panel = document.getElementById("settings-panel");
-  if (!panel.hidden && !panel.contains(e.target) && e.target.id !== "settings-toggle") {
-    panel.hidden = true;
+  [
+    ["settings-panel", "settings-toggle"],
+    ["auth-panel", "user-badge"],
+    ["sales-stats-panel", "sales-stats-toggle"],
+  ].forEach(([panelId, toggleId]) => {
+    const panel = document.getElementById(panelId);
+    const toggleBtn = document.getElementById(toggleId);
+    if (!panel.hidden && !panel.contains(e.target) && !toggleBtn.contains(e.target)) {
+      panel.hidden = true;
+    }
+  });
+});
+
+// --- Konto (nur lokal, name+passwort) ---
+async function sha256Hex(text) {
+  const enc = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function randomSalt() {
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  return [...arr].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function loadUsers() {
+  try {
+    return JSON.parse(localStorage.getItem("medipulse_users") || "[]");
+  } catch {
+    return [];
+  }
+}
+function saveUsers(users) {
+  localStorage.setItem("medipulse_users", JSON.stringify(users));
+}
+
+let currentUser = localStorage.getItem("medipulse_current_user") || null;
+let authMode = "login"; // "login" | "register"
+
+async function registerUser(name, password) {
+  name = name.trim();
+  if (!name) throw new Error("Bitte einen Namen eingeben.");
+  if (password.length < 4) throw new Error("Passwort muss mindestens 4 Zeichen haben.");
+  const users = loadUsers();
+  if (users.some((u) => u.name.toLowerCase() === name.toLowerCase())) {
+    throw new Error("Dieser Name ist bereits vergeben.");
+  }
+  const salt = randomSalt();
+  const hash = await sha256Hex(salt + password);
+  users.push({ name, salt, hash });
+  saveUsers(users);
+  setCurrentUser(name);
+}
+
+async function loginUser(name, password) {
+  name = name.trim();
+  const users = loadUsers();
+  const user = users.find((u) => u.name.toLowerCase() === name.toLowerCase());
+  if (!user) throw new Error("Unbekannter Name — noch nicht registriert?");
+  const hash = await sha256Hex(user.salt + password);
+  if (hash !== user.hash) throw new Error("Falsches Passwort.");
+  setCurrentUser(user.name);
+}
+
+function setCurrentUser(name) {
+  currentUser = name;
+  localStorage.setItem("medipulse_current_user", name);
+  updateUserBadge();
+}
+
+function logoutUser() {
+  currentUser = null;
+  authMode = "login";
+  localStorage.removeItem("medipulse_current_user");
+  updateUserBadge();
+}
+
+function updateUserBadge() {
+  const label = document.getElementById("user-badge-label");
+  label.textContent = currentUser || "Anmelden";
+  renderAuthPanel();
+  if (!document.getElementById("sales-stats-panel").hidden) renderSalesStatsPanel();
+}
+
+function renderAuthPanel() {
+  const loggedInBox = document.getElementById("auth-logged-in");
+  const formWrap = document.getElementById("auth-form-wrap");
+  const title = document.getElementById("auth-panel-title");
+  document.getElementById("auth-error").hidden = true;
+  if (currentUser) {
+    loggedInBox.hidden = false;
+    formWrap.hidden = true;
+    title.textContent = "Konto";
+    document.getElementById("auth-current-name-label").textContent = currentUser;
+  } else {
+    loggedInBox.hidden = true;
+    formWrap.hidden = false;
+    title.textContent = authMode === "login" ? "Anmelden" : "Registrieren";
+    document.getElementById("auth-submit").textContent = authMode === "login" ? "Anmelden" : "Registrieren";
+    document.getElementById("auth-switch-mode").textContent =
+      authMode === "login" ? "Noch kein Konto? Registrieren" : "Schon registriert? Anmelden";
+  }
+}
+
+document.getElementById("user-badge").addEventListener("click", () => {
+  const panel = document.getElementById("auth-panel");
+  const willOpen = panel.hidden;
+  closeAllOverlayPanels();
+  panel.hidden = !willOpen;
+  if (willOpen) renderAuthPanel();
+});
+document.getElementById("auth-close").addEventListener("click", () => {
+  document.getElementById("auth-panel").hidden = true;
+});
+document.getElementById("auth-switch-mode").addEventListener("click", () => {
+  authMode = authMode === "login" ? "register" : "login";
+  document.getElementById("auth-name").value = "";
+  document.getElementById("auth-password").value = "";
+  renderAuthPanel();
+});
+document.getElementById("auth-submit").addEventListener("click", async () => {
+  const name = document.getElementById("auth-name").value;
+  const password = document.getElementById("auth-password").value;
+  const errorEl = document.getElementById("auth-error");
+  try {
+    if (authMode === "login") await loginUser(name, password);
+    else await registerUser(name, password);
+    document.getElementById("auth-name").value = "";
+    document.getElementById("auth-password").value = "";
+    errorEl.hidden = true;
+  } catch (err) {
+    errorEl.textContent = err.message;
+    errorEl.hidden = false;
   }
 });
+document.getElementById("auth-logout").addEventListener("click", () => {
+  logoutUser();
+});
+
+// --- Statistik (pro Konto, nur lokal) ---
+const STAT_CATEGORIES = [
+  { key: "anrufe", label: "Anrufe", emoji: "📞" },
+  { key: "termine", label: "Vor-Ort-Termine", emoji: "🚗" },
+  { key: "kunden", label: "Neue Kunden", emoji: "🤝" },
+  { key: "emails", label: "E-Mails", emoji: "✉️" },
+];
+
+function statsKey(user) {
+  return `medipulse_stats_${user}`;
+}
+function loadStats(user) {
+  try {
+    return JSON.parse(localStorage.getItem(statsKey(user)) || "null") || { counters: {}, notes: [] };
+  } catch {
+    return { counters: {}, notes: [] };
+  }
+}
+function saveStats(user, stats) {
+  localStorage.setItem(statsKey(user), JSON.stringify(stats));
+}
+
+function bumpStat(key, delta) {
+  if (!currentUser) return;
+  const stats = loadStats(currentUser);
+  stats.counters[key] = Math.max(0, (stats.counters[key] || 0) + delta);
+  saveStats(currentUser, stats);
+  renderSalesStatsPanel();
+}
+
+function addStatNote(text) {
+  if (!currentUser || !text.trim()) return;
+  const stats = loadStats(currentUser);
+  stats.notes.unshift({ date: new Date().toLocaleDateString("de-DE"), text: text.trim() });
+  saveStats(currentUser, stats);
+  renderSalesStatsPanel();
+}
+
+function renderSalesStatsPanel() {
+  const loggedOutBox = document.getElementById("sales-stats-logged-out");
+  const body = document.getElementById("sales-stats-body");
+  if (!currentUser) {
+    loggedOutBox.hidden = false;
+    body.hidden = true;
+    return;
+  }
+  loggedOutBox.hidden = true;
+  body.hidden = false;
+  const stats = loadStats(currentUser);
+  const counterRows = STAT_CATEGORIES.map(
+    (c) => `
+    <div class="stat-counter-row">
+      <span class="stat-counter-label">${c.emoji} ${esc(c.label)}</span>
+      <div class="stat-counter-controls">
+        <button type="button" class="stat-counter-btn" data-action="dec" data-key="${c.key}">–</button>
+        <span class="stat-counter-value">${stats.counters[c.key] || 0}</span>
+        <button type="button" class="stat-counter-btn" data-action="inc" data-key="${c.key}">+</button>
+      </div>
+    </div>`
+  ).join("");
+  const noteItems = stats.notes
+    .slice(0, 20)
+    .map((n) => `<li class="stat-note-item"><span class="stat-note-date">${esc(n.date)}</span>${esc(n.text)}</li>`)
+    .join("");
+  body.innerHTML = `
+    ${counterRows}
+    <div class="stat-notes-title">Notizen</div>
+    <div class="stat-note-input-row">
+      <input type="text" id="stat-note-input" class="stat-note-input" placeholder="z.B. Termin bei Dr. Müller vereinbart">
+      <button type="button" id="stat-note-add" class="stat-note-add-btn">+</button>
+    </div>
+    <ul class="stat-note-list">${noteItems || '<li class="stat-note-item">Noch keine Notizen.</li>'}</ul>
+  `;
+  body.querySelectorAll(".stat-counter-btn").forEach((btn) => {
+    btn.addEventListener("click", () => bumpStat(btn.dataset.key, btn.dataset.action === "inc" ? 1 : -1));
+  });
+  const noteInput = document.getElementById("stat-note-input");
+  document.getElementById("stat-note-add").addEventListener("click", () => {
+    addStatNote(noteInput.value);
+    noteInput.value = "";
+  });
+  noteInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      addStatNote(noteInput.value);
+      noteInput.value = "";
+    }
+  });
+}
+
+document.getElementById("sales-stats-toggle").addEventListener("click", () => {
+  const panel = document.getElementById("sales-stats-panel");
+  const willOpen = panel.hidden;
+  closeAllOverlayPanels();
+  panel.hidden = !willOpen;
+  if (willOpen) renderSalesStatsPanel();
+});
+document.getElementById("sales-stats-close").addEventListener("click", () => {
+  document.getElementById("sales-stats-panel").hidden = true;
+});
+document.getElementById("sales-stats-login-btn").addEventListener("click", () => {
+  document.getElementById("sales-stats-panel").hidden = true;
+  document.getElementById("auth-panel").hidden = false;
+  renderAuthPanel();
+});
+
+updateUserBadge();
 
 function setGewinnProArzt(value) {
   gewinnProArzt = Math.max(0, Number(value) || 0);

@@ -1027,16 +1027,26 @@ document.getElementById("settings-rotate-toggle").addEventListener("change", (e)
 
 // --- Einstellungen: Rad oben rechts, Rotation + GPA (Gewinn pro Arzt) ---
 document.getElementById("settings-toggle").addEventListener("click", () => {
-  document.getElementById("settings-panel").hidden = false;
+  const panel = document.getElementById("settings-panel");
+  const willOpen = panel.hidden;
+  closeAllOverlayPanels();
+  panel.hidden = !willOpen;
 });
 document.getElementById("settings-close").addEventListener("click", () => {
   document.getElementById("settings-panel").hidden = true;
 });
 document.addEventListener("click", (e) => {
-  const panel = document.getElementById("settings-panel");
-  if (!panel.hidden && !panel.contains(e.target) && e.target.id !== "settings-toggle") {
-    panel.hidden = true;
-  }
+  [
+    ["settings-panel", "settings-toggle"],
+    ["auth-panel", "user-badge"],
+    ["sales-stats-panel", "sales-stats-toggle"],
+  ].forEach(([panelId, toggleId]) => {
+    const panel = document.getElementById(panelId);
+    const toggleBtn = document.getElementById(toggleId);
+    if (!panel.hidden && !panel.contains(e.target) && !toggleBtn.contains(e.target)) {
+      panel.hidden = true;
+    }
+  });
 });
 
 function setGewinnProArzt(value) {
@@ -1269,3 +1279,246 @@ document.addEventListener("click", (e) => {
     openRoutePlanner(currentPopupDoctor);
   }
 });
+
+// --- Konten (nur lokal im Browser, kein echtes Backend) ---
+// Dient ausschließlich der Zuordnung "wessen Statistik ist das", keine
+// echte Zugriffskontrolle — die App bleibt komplett statisch (GitHub
+// Pages), daher kein Server, der Passwörter sicher prüfen könnte.
+async function sha256Hex(text) {
+  const enc = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function randomSalt() {
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  return [...arr].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function loadUsers() {
+  try {
+    return JSON.parse(localStorage.getItem("medipulse_users") || "[]");
+  } catch {
+    return [];
+  }
+}
+function saveUsers(users) {
+  localStorage.setItem("medipulse_users", JSON.stringify(users));
+}
+
+let currentUser = localStorage.getItem("medipulse_current_user") || null;
+let authMode = "login"; // "login" | "register"
+
+async function registerUser(name, password) {
+  name = name.trim();
+  if (!name) throw new Error("Bitte einen Namen eingeben.");
+  if (password.length < 4) throw new Error("Passwort muss mindestens 4 Zeichen haben.");
+  const users = loadUsers();
+  if (users.some((u) => u.name.toLowerCase() === name.toLowerCase())) {
+    throw new Error("Dieser Name ist bereits vergeben.");
+  }
+  const salt = randomSalt();
+  const hash = await sha256Hex(salt + password);
+  users.push({ name, salt, hash });
+  saveUsers(users);
+  setCurrentUser(name);
+}
+
+async function loginUser(name, password) {
+  name = name.trim();
+  const users = loadUsers();
+  const user = users.find((u) => u.name.toLowerCase() === name.toLowerCase());
+  if (!user) throw new Error("Unbekannter Name — noch nicht registriert?");
+  const hash = await sha256Hex(user.salt + password);
+  if (hash !== user.hash) throw new Error("Falsches Passwort.");
+  setCurrentUser(user.name);
+}
+
+function setCurrentUser(name) {
+  currentUser = name;
+  localStorage.setItem("medipulse_current_user", name);
+  updateUserBadge();
+}
+
+function logoutUser() {
+  currentUser = null;
+  authMode = "login";
+  localStorage.removeItem("medipulse_current_user");
+  updateUserBadge();
+}
+
+function updateUserBadge() {
+  const label = document.getElementById("user-badge-label");
+  label.textContent = currentUser || "Anmelden";
+  renderAuthPanel();
+  if (!document.getElementById("sales-stats-panel").hidden) renderSalesStatsPanel();
+}
+
+function closeAllOverlayPanels() {
+  document.getElementById("settings-panel").hidden = true;
+  document.getElementById("auth-panel").hidden = true;
+  document.getElementById("sales-stats-panel").hidden = true;
+}
+
+function renderAuthPanel() {
+  const loggedInBox = document.getElementById("auth-logged-in");
+  const formWrap = document.getElementById("auth-form-wrap");
+  const title = document.getElementById("auth-panel-title");
+  document.getElementById("auth-error").hidden = true;
+  if (currentUser) {
+    loggedInBox.hidden = false;
+    formWrap.hidden = true;
+    title.textContent = "Konto";
+    document.getElementById("auth-current-name-label").textContent = currentUser;
+  } else {
+    loggedInBox.hidden = true;
+    formWrap.hidden = false;
+    title.textContent = authMode === "login" ? "Anmelden" : "Registrieren";
+    document.getElementById("auth-submit").textContent = authMode === "login" ? "Anmelden" : "Registrieren";
+    document.getElementById("auth-switch-mode").textContent =
+      authMode === "login" ? "Noch kein Konto? Registrieren" : "Schon registriert? Anmelden";
+  }
+}
+
+document.getElementById("user-badge").addEventListener("click", () => {
+  const panel = document.getElementById("auth-panel");
+  const willOpen = panel.hidden;
+  closeAllOverlayPanels();
+  panel.hidden = !willOpen;
+  if (willOpen) renderAuthPanel();
+});
+document.getElementById("auth-close").addEventListener("click", () => {
+  document.getElementById("auth-panel").hidden = true;
+});
+document.getElementById("auth-switch-mode").addEventListener("click", () => {
+  authMode = authMode === "login" ? "register" : "login";
+  document.getElementById("auth-name").value = "";
+  document.getElementById("auth-password").value = "";
+  renderAuthPanel();
+});
+document.getElementById("auth-submit").addEventListener("click", async () => {
+  const name = document.getElementById("auth-name").value;
+  const password = document.getElementById("auth-password").value;
+  const errorEl = document.getElementById("auth-error");
+  try {
+    if (authMode === "login") await loginUser(name, password);
+    else await registerUser(name, password);
+    document.getElementById("auth-name").value = "";
+    document.getElementById("auth-password").value = "";
+    errorEl.hidden = true;
+  } catch (err) {
+    errorEl.textContent = err.message;
+    errorEl.hidden = false;
+  }
+});
+document.getElementById("auth-logout").addEventListener("click", () => {
+  logoutUser();
+});
+
+// --- Statistik (pro Konto, nur lokal) ---
+const STAT_CATEGORIES = [
+  { key: "anrufe", label: "Anrufe", emoji: "📞" },
+  { key: "termine", label: "Vor-Ort-Termine", emoji: "🚗" },
+  { key: "kunden", label: "Neue Kunden", emoji: "🤝" },
+  { key: "emails", label: "E-Mails", emoji: "✉️" },
+];
+
+function statsKey(user) {
+  return `medipulse_stats_${user}`;
+}
+function loadStats(user) {
+  try {
+    return JSON.parse(localStorage.getItem(statsKey(user)) || "null") || { counters: {}, notes: [] };
+  } catch {
+    return { counters: {}, notes: [] };
+  }
+}
+function saveStats(user, stats) {
+  localStorage.setItem(statsKey(user), JSON.stringify(stats));
+}
+
+function bumpStat(key, delta) {
+  if (!currentUser) return;
+  const stats = loadStats(currentUser);
+  stats.counters[key] = Math.max(0, (stats.counters[key] || 0) + delta);
+  saveStats(currentUser, stats);
+  renderSalesStatsPanel();
+}
+
+function addStatNote(text) {
+  if (!currentUser || !text.trim()) return;
+  const stats = loadStats(currentUser);
+  stats.notes.unshift({ date: new Date().toLocaleDateString("de-DE"), text: text.trim() });
+  saveStats(currentUser, stats);
+  renderSalesStatsPanel();
+}
+
+function renderSalesStatsPanel() {
+  const loggedOutBox = document.getElementById("sales-stats-logged-out");
+  const body = document.getElementById("sales-stats-body");
+  if (!currentUser) {
+    loggedOutBox.hidden = false;
+    body.hidden = true;
+    return;
+  }
+  loggedOutBox.hidden = true;
+  body.hidden = false;
+  const stats = loadStats(currentUser);
+  const counterRows = STAT_CATEGORIES.map(
+    (c) => `
+    <div class="stat-counter-row">
+      <span class="stat-counter-label">${c.emoji} ${escapeHtml(c.label)}</span>
+      <div class="stat-counter-controls">
+        <button type="button" class="stat-counter-btn" data-action="dec" data-key="${c.key}">–</button>
+        <span class="stat-counter-value">${stats.counters[c.key] || 0}</span>
+        <button type="button" class="stat-counter-btn" data-action="inc" data-key="${c.key}">+</button>
+      </div>
+    </div>`
+  ).join("");
+  const noteItems = stats.notes
+    .slice(0, 20)
+    .map((n) => `<li class="stat-note-item"><span class="stat-note-date">${escapeHtml(n.date)}</span>${escapeHtml(n.text)}</li>`)
+    .join("");
+  body.innerHTML = `
+    ${counterRows}
+    <div class="stat-notes-title">Notizen</div>
+    <div class="stat-note-input-row">
+      <input type="text" id="stat-note-input" class="stat-note-input" placeholder="z.B. Termin bei Dr. Müller vereinbart">
+      <button type="button" id="stat-note-add" class="stat-note-add-btn">+</button>
+    </div>
+    <ul class="stat-note-list">${noteItems || '<li class="stat-note-item">Noch keine Notizen.</li>'}</ul>
+  `;
+  body.querySelectorAll(".stat-counter-btn").forEach((btn) => {
+    btn.addEventListener("click", () => bumpStat(btn.dataset.key, btn.dataset.action === "inc" ? 1 : -1));
+  });
+  const noteInput = document.getElementById("stat-note-input");
+  document.getElementById("stat-note-add").addEventListener("click", () => {
+    addStatNote(noteInput.value);
+    noteInput.value = "";
+  });
+  noteInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      addStatNote(noteInput.value);
+      noteInput.value = "";
+    }
+  });
+}
+
+document.getElementById("sales-stats-toggle").addEventListener("click", () => {
+  const panel = document.getElementById("sales-stats-panel");
+  const willOpen = panel.hidden;
+  closeAllOverlayPanels();
+  panel.hidden = !willOpen;
+  if (willOpen) renderSalesStatsPanel();
+});
+document.getElementById("sales-stats-close").addEventListener("click", () => {
+  document.getElementById("sales-stats-panel").hidden = true;
+});
+document.getElementById("sales-stats-login-btn").addEventListener("click", () => {
+  document.getElementById("sales-stats-panel").hidden = true;
+  document.getElementById("auth-panel").hidden = false;
+  renderAuthPanel();
+});
+
+updateUserBadge();

@@ -24,8 +24,44 @@
     </div>
 
     <img src="assets/medipulse-logo.png" alt="Medipulse" class="topbar-logo" id="topbar-logo" onerror="this.style.display='none'">
+    <button id="user-badge" class="icon-btn user-badge-btn" title="Anmelden">👤 <span id="user-badge-label">Anmelden</span></button>
+    <button id="sales-stats-toggle" class="icon-btn" title="Meine Statistik">📊</button>
     <button id="settings-toggle" class="icon-btn" title="Einstellungen">⚙️</button>
   </header>
+
+  <div class="auth-panel" id="auth-panel" hidden>
+    <div class="settings-panel-header">
+      <span id="auth-panel-title">Anmelden</span>
+      <button id="auth-close" class="icon-btn" title="Schließen">×</button>
+    </div>
+
+    <div id="auth-logged-in" hidden>
+      <div class="auth-current-name">Angemeldet als <strong id="auth-current-name-label"></strong></div>
+      <button type="button" id="auth-logout" class="auth-submit-btn">Abmelden</button>
+    </div>
+
+    <div id="auth-form-wrap">
+      <div class="auth-error" id="auth-error" hidden></div>
+      <input type="text" id="auth-name" class="auth-input" placeholder="Name" autocomplete="username" />
+      <input type="password" id="auth-password" class="auth-input" placeholder="Passwort" autocomplete="current-password" />
+      <button type="button" id="auth-submit" class="auth-submit-btn">Anmelden</button>
+      <button type="button" id="auth-switch-mode" class="auth-switch-btn">Noch kein Konto? Registrieren</button>
+    </div>
+
+    <div class="auth-hint">Nur lokal auf diesem Gerät gespeichert — kein echter Passwortschutz, dient nur zur Zuordnung der eigenen Statistik.</div>
+  </div>
+
+  <div class="settings-panel" id="sales-stats-panel" hidden>
+    <div class="settings-panel-header">
+      <span>Meine Statistik</span>
+      <button id="sales-stats-close" class="icon-btn" title="Schließen">×</button>
+    </div>
+    <div id="sales-stats-logged-out" hidden>
+      <div class="auth-hint" style="margin:0 0 10px;">Bitte zuerst anmelden, um deine eigene Statistik zu führen.</div>
+      <button type="button" id="sales-stats-login-btn" class="auth-submit-btn">Jetzt anmelden</button>
+    </div>
+    <div id="sales-stats-body" hidden></div>
+  </div>
 
   <div class="settings-panel" id="settings-panel" hidden>
     <div class="settings-panel-header">
