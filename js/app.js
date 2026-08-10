@@ -757,7 +757,11 @@ function sizeGaugeHtml(groesse) {
     </div>`;
 }
 
+// Bei bereits gewonnenen Kunden ist "möglicher Umsatz" irreführend — die
+// Praxis ist ja schon Kunde, keine Chance mehr, die man verkaufsseitig
+// bewerten müsste.
 function earningsRowHtml(d) {
+  if (d.status === "kunde") return "";
   const groesse = d.groesse || 1;
   const total = groesse * gewinnProArzt;
   return `<div class="popup-row earnings-row">💰 ${total.toLocaleString("de-DE")} € möglicher Umsatz</div>`;
@@ -848,7 +852,7 @@ function renderList() {
       </div>
       <div class="doctor-meta">${escapeHtml(KATEGORIE_LABELS[kategorie])} · ${escapeHtml(d.fachrichtung)} · ${escapeHtml(d.stadt)}</div>
       ${d.einrichtung ? `<div class="doctor-meta doctor-einrichtung">${escapeHtml(d.einrichtung)}</div>` : ""}
-      <div class="doctor-meta doctor-earnings">💰 ${((d.groesse || 1) * gewinnProArzt).toLocaleString("de-DE")} € möglich</div>
+      ${d.status === "kunde" ? "" : `<div class="doctor-meta doctor-earnings">💰 ${((d.groesse || 1) * gewinnProArzt).toLocaleString("de-DE")} € möglich</div>`}
     `;
     li.addEventListener("click", () => selectDoctor(d.id, true));
     list.appendChild(li);

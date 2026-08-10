@@ -1270,7 +1270,7 @@ function renderList() {
       </div>
       <div class="li-meta">${esc(KATEGORIE_LABEL[d.kategorie] || "Sonstige")} · ${esc(d.fachrichtung)} · ${esc(d.stadt)}</div>
       ${d.einrichtung ? `<div class="li-meta li-einrichtung">${esc(d.einrichtung)}</div>` : ""}
-      <div class="li-meta li-earnings">💰 ${((d.groesse || 1) * gewinnProArzt).toLocaleString("de-DE")} € möglich</div>
+      ${d.status === "kunde" ? "" : `<div class="li-meta li-earnings">💰 ${((d.groesse || 1) * gewinnProArzt).toLocaleString("de-DE")} € möglich</div>`}
     </li>`
     )
     .join("");
@@ -1371,8 +1371,13 @@ function showDetail(d) {
     groesseRow.hidden = true;
   }
 
-  document.getElementById("d-earnings").textContent =
-    `💰 ${((d.groesse || 1) * gewinnProArzt).toLocaleString("de-DE")} € möglicher Umsatz`;
+  const earningsEl = document.getElementById("d-earnings");
+  if (d.status === "kunde") {
+    earningsEl.hidden = true;
+  } else {
+    earningsEl.hidden = false;
+    earningsEl.textContent = `💰 ${((d.groesse || 1) * gewinnProArzt).toLocaleString("de-DE")} € möglicher Umsatz`;
+  }
 
   const connRow = document.getElementById("d-connections");
   if (lastConnectionsInfo && lastConnectionsInfo.total > 0) {
