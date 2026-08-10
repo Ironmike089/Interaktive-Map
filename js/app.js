@@ -589,6 +589,32 @@ function setupMapLayers() {
     },
   });
 
+  // Heatmap (optional, per Einstellungen umschaltbar) — eigene Quelle statt
+  // der geclusterten "aerzte"-Quelle, damit sie unabhängig von der aktuellen
+  // Cluster-Auflösung eine durchgehende Dichtefläche zeigen kann.
+  map.addSource("heatmap-source", { type: "geojson", data: EMPTY_FC });
+  map.addLayer({
+    id: "heatmap-layer",
+    type: "heatmap",
+    source: "heatmap-source",
+    layout: { visibility: "none" },
+    paint: {
+      "heatmap-weight": ["interpolate", ["linear"], ["coalesce", ["get", "groesse"], 1], 1, 0.3, 20, 1],
+      "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 9, 3],
+      "heatmap-color": [
+        "interpolate", ["linear"], ["heatmap-density"],
+        0, "rgba(0,0,0,0)",
+        0.2, "#3fd0c7",
+        0.4, "#4f8cff",
+        0.6, "#f5a623",
+        0.8, "#e74c3c",
+        1, "#ffffff",
+      ],
+      "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 4, 9, 30],
+      "heatmap-opacity": 0.75,
+    },
+  });
+
   map.addLayer({
     id: "unclustered-point",
     type: "symbol",
@@ -619,6 +645,10 @@ function setupMapLayers() {
 
   map.on("click", "unclustered-point", (e) => {
     const feature = e.features[0];
+    if (routePlan && routePlan.picking) {
+      addRoutePickedDoctor(feature.properties.id);
+      return;
+    }
     openDoctorPopup(feature.properties, feature.geometry.coordinates.slice());
     selectDoctor(feature.properties.id, false);
   });
@@ -732,15 +762,13 @@ function earningsRowHtml(d) {
 }
 
 function openDoctorPopup(d, coords) {
-  currentPopupDoctor = d;
-  // Google-Maps-Universal-Link (https://developers.google.com/maps/documentation/urls/get-started):
-  // öffnet auf dem Handy die echte Google-Maps-App mit Turn-by-Turn-Navigation,
-  // Live-Verkehr, km-Anzeige und Fahrzeit — am Desktop die Google-Maps-Website
-  // mit fertiger Autoroute. Eigene Turn-by-Turn-Navigation nachzubauen wäre
-  // ohne eigene Routing-/Verkehrsdaten nicht möglich, daher der Deep-Link.
-  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}&travelmode=driving`;
   const kategorie = d.kategorie || "sonstige";
-  const conn = updateConnections(d);
+  // Nur die Info berechnen (keine Kartenänderung) — das tatsächliche Zeichnen
+  // passiert erst NACH addTo(), siehe unten: MapLibre entfernt beim
+  // Wiederverwenden desselben Popup-Objekts intern kurz das alte (feuert
+  // "close"), was currentPopupDoctor/die Verbindungslinien sonst sofort
+  // wieder zurücksetzen würde.
+  const conn = getConnectedDoctors(d);
   const html = `
     <div class="popup-title">${escapeHtml(d.name)}</div>
     <div class="popup-sub">
@@ -748,7 +776,7 @@ function openDoctorPopup(d, coords) {
       ${escapeHtml(KATEGORIE_LABELS[kategorie])} · ${escapeHtml(d.fachrichtung)} · ${escapeHtml(d.stadt)}
     </div>
     ${d.einrichtung ? `<div class="popup-row">🏥 ${escapeHtml(d.einrichtung)}${d.kette ? ` <span style="color:var(--text-dim)">(${escapeHtml(d.kette)})</span>` : ""}</div>` : ""}
-    ${conn.total > 0 ? `<div class="popup-row connections-row">🔗 ${conn.total.toLocaleString("de-DE")} weitere Standorte der Kette ${escapeHtml(d.kette)} auf der Karte hervorgehoben${conn.total > conn.shown ? ` (${conn.shown} angezeigt)` : ""}</div>` : ""}
+    ${conn.total > 0 ? `<div class="popup-row connections-row">🔗 ${conn.total.toLocaleString("de-DE")} weitere Standorte der Kette ${escapeHtml(d.kette)} auf der Karte hervorgehoben${conn.total > conn.items.length ? ` (${conn.items.length} angezeigt)` : ""}</div>` : ""}
     ${sizeGaugeHtml(d.groesse)}
     ${earningsRowHtml(d)}
     <div class="popup-row">📍 ${escapeHtml(d.strasse)}, ${escapeHtml(d.plz)} ${escapeHtml(d.stadt)}</div>
@@ -760,10 +788,12 @@ function openDoctorPopup(d, coords) {
     <div class="popup-actions">
       ${d.telefon ? `<a href="tel:${escapeHtml(d.telefon)}">Anrufen</a>` : ""}
       ${d.email ? `<a href="mailto:${escapeHtml(d.email)}">E-Mail</a>` : ""}
-      <a href="${mapsUrl}" target="_blank" rel="noopener">Route</a>
+      <button type="button" class="popup-route-btn">Route</button>
     </div>
   `;
   popup.setLngLat(coords).setHTML(html).addTo(map);
+  currentPopupDoctor = d;
+  updateConnections(d);
 }
 
 popup.on("close", () => {
@@ -839,10 +869,44 @@ function updateStats() {
   document.getElementById("stat-lead").textContent = fmt(data.filter((d) => d.status === "lead").length);
 }
 
+let heatmapEnabled = false;
+
+function heatmapGeoJSON() {
+  let data = getFilteredData();
+  const scope = document.querySelector('input[name="heatmap-scope"]:checked').value;
+  if (scope === "kunde") data = data.filter((d) => d.status === "kunde");
+  return toGeoJSON(data);
+}
+
+function updateHeatmap() {
+  const src = map.getSource("heatmap-source");
+  if (src) src.setData(heatmapGeoJSON());
+}
+
+function setHeatmapVisible(visible) {
+  heatmapEnabled = visible;
+  const vis = visible ? "visible" : "none";
+  const pinsVis = visible ? "none" : "visible";
+  if (map.getLayer("heatmap-layer")) map.setLayoutProperty("heatmap-layer", "visibility", vis);
+  ["clusters", "cluster-count", "unclustered-point"].forEach((id) => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", pinsVis);
+  });
+  if (visible) updateHeatmap();
+}
+
+document.getElementById("settings-heatmap-toggle").addEventListener("change", (e) => {
+  document.getElementById("heatmap-scope-row").hidden = !e.target.checked;
+  setHeatmapVisible(e.target.checked);
+});
+document.querySelectorAll('input[name="heatmap-scope"]').forEach((r) => {
+  r.addEventListener("change", () => { if (heatmapEnabled) updateHeatmap(); });
+});
+
 function applyFilters() {
   refreshSource();
   renderList();
   updateStats();
+  if (heatmapEnabled) updateHeatmap();
 }
 
 let searchDebounceTimer = null;
@@ -889,15 +953,14 @@ map.on("moveend", () => {
   window.__resumeTimer = setTimeout(() => (userInteracting = false), 2500);
 });
 
+// Rotation lässt sich bewusst nur über die Einstellungen steuern (kein
+// zusätzlicher Schnellzugriff auf der Karte), damit es nicht zwei Stellen
+// gibt, die denselben Zustand halten müssen.
 function setAutoRotate(value) {
   autoRotate = value;
-  document.getElementById("rotate-icon").textContent = autoRotate ? "⏸" : "▶";
   document.getElementById("settings-rotate-toggle").checked = autoRotate;
 }
 
-document.getElementById("rotate-toggle").addEventListener("click", () => {
-  setAutoRotate(!autoRotate);
-});
 document.getElementById("settings-rotate-toggle").addEventListener("change", (e) => {
   setAutoRotate(e.target.checked);
 });
@@ -954,4 +1017,195 @@ document.getElementById("groesse-input").addEventListener("input", (e) => {
   document.getElementById("groesse-value-label").textContent = minGroesse <= 1 ? "1" : minGroesse;
   document.getElementById("groesse-slider").value = groessePercentFromThreshold(n);
   applyFilters();
+});
+
+// --- Routenplaner: von einer Praxis aus optional mehrere weitere Stopps in
+// eine gemeinsame Google-Maps-Route mit Zwischenstopps einbinden ---
+const ROUTE_MAX_STOPS = 8;
+let routePlan = null; // { start, count, stops: [], suggestions: [], picking }
+
+function haversineKm(a, b) {
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const la1 = (a.lat * Math.PI) / 180;
+  const la2 = (b.lat * Math.PI) / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+// Google-Maps-Universal-Link (https://developers.google.com/maps/documentation/urls/get-started):
+// öffnet auf dem Handy die echte Google-Maps-App mit Turn-by-Turn-Navigation
+// inkl. Zwischenstopps, am Desktop die Google-Maps-Website mit fertiger
+// Route. Eigenes Routing nachzubauen wäre ohne eigene Verkehrsdaten nicht
+// möglich, daher der Deep-Link.
+function openGoogleMapsRoute(doctors) {
+  if (doctors.length === 1) {
+    const d = doctors[0];
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}&travelmode=driving`, "_blank", "noopener");
+    return;
+  }
+  const origin = doctors[0];
+  const destination = doctors[doctors.length - 1];
+  const waypoints = doctors.slice(1, -1).map((d) => `${d.lat},${d.lng}`).join("|");
+  let url = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}&travelmode=driving`;
+  if (waypoints) url += `&waypoints=${encodeURIComponent(waypoints)}`;
+  window.open(url, "_blank", "noopener");
+}
+
+function openRoutePlanner(doctor) {
+  routePlan = { start: doctor, count: 1, stops: [], suggestions: [], picking: false };
+  document.getElementById("route-planner-backdrop").hidden = false;
+  renderRouteConfirmStep();
+}
+
+function closeRoutePlanner() {
+  routePlan = null;
+  document.getElementById("route-planner-backdrop").hidden = true;
+  document.getElementById("route-picking-bar").hidden = true;
+}
+
+function renderRouteConfirmStep() {
+  const body = document.getElementById("route-planner-body");
+  body.innerHTML = `
+    <div class="route-planner-title">Möchtest du weitere Praxen in die Route zu <strong>${escapeHtml(routePlan.start.name)}</strong> einbinden?</div>
+    <div class="route-planner-actions">
+      <button type="button" id="route-confirm-no">Nein, direkt öffnen</button>
+      <button type="button" class="primary" id="route-confirm-yes">Ja, mehrere einbinden</button>
+    </div>
+  `;
+  document.getElementById("route-confirm-no").addEventListener("click", () => {
+    openGoogleMapsRoute([routePlan.start]);
+    closeRoutePlanner();
+  });
+  document.getElementById("route-confirm-yes").addEventListener("click", renderRouteCountStep);
+}
+
+function renderRouteCountStep() {
+  const body = document.getElementById("route-planner-body");
+  body.innerHTML = `
+    <div class="route-planner-title">Wie viele weitere Praxen sollen in die Route?</div>
+    <div class="route-count-row">
+      <input type="range" id="route-count-slider" class="route-count-slider" min="1" max="${ROUTE_MAX_STOPS}" step="1" value="${routePlan.count}">
+      <input type="number" id="route-count-input" class="route-count-input" min="1" max="${ROUTE_MAX_STOPS}" step="1" value="${routePlan.count}">
+    </div>
+    <div class="route-count-hint">max. ${ROUTE_MAX_STOPS} zusätzliche Stopps</div>
+    <div class="route-planner-actions">
+      <button type="button" id="route-count-back">Zurück</button>
+      <button type="button" class="primary" id="route-count-next">Weiter</button>
+    </div>
+  `;
+  const slider = document.getElementById("route-count-slider");
+  const input = document.getElementById("route-count-input");
+  slider.addEventListener("input", () => { input.value = slider.value; });
+  input.addEventListener("input", () => {
+    const v = Math.max(1, Math.min(ROUTE_MAX_STOPS, Math.round(Number(input.value) || 1)));
+    slider.value = v;
+  });
+  document.getElementById("route-count-back").addEventListener("click", renderRouteConfirmStep);
+  document.getElementById("route-count-next").addEventListener("click", () => {
+    routePlan.count = Math.max(1, Math.min(ROUTE_MAX_STOPS, Math.round(Number(input.value) || 1)));
+    renderRouteSelectStep();
+  });
+}
+
+function suggestNearbyDoctors() {
+  const pool = getFilteredData().filter((d) => d.id !== routePlan.start.id);
+  return pool
+    .map((d) => ({ doctor: d, dist: haversineKm(routePlan.start, d) }))
+    // Kollegen an derselben Adresse (dieselben Koordinaten) sind als Route-
+    // Zwischenstopp sinnlos — Google Maps würde ohnehin dieselbe Adresse
+    // ansteuern, daher nur echte, andere Standorte vorschlagen.
+    .filter((s) => s.dist > 0.05)
+    .sort((a, b) => a.dist - b.dist)
+    .slice(0, routePlan.count);
+}
+
+function renderRouteSelectStep() {
+  routePlan.suggestions = suggestNearbyDoctors();
+  routePlan.stops = routePlan.suggestions.map((s) => s.doctor);
+  renderRouteSelectBody();
+}
+
+function renderRouteSelectBody() {
+  const body = document.getElementById("route-planner-body");
+  const items = routePlan.suggestions
+    .map(({ doctor, dist }) => {
+      const checked = routePlan.stops.some((s) => s.id === doctor.id) ? "checked" : "";
+      return `
+        <li class="route-stop-item">
+          <input type="checkbox" data-id="${doctor.id}" ${checked}>
+          <span class="route-stop-name">${escapeHtml(doctor.name)} · ${escapeHtml(doctor.stadt)}</span>
+          <span class="route-stop-dist">${dist.toFixed(1)} km</span>
+        </li>`;
+    })
+    .join("");
+  body.innerHTML = `
+    <div class="route-planner-title">Vorschläge in der Nähe von <strong>${escapeHtml(routePlan.start.name)}</strong> (bis zu ${routePlan.count}):</div>
+    <ul class="route-stop-list">${items || '<li class="route-stop-item">Keine weiteren Praxen in der aktuellen Ansicht gefunden.</li>'}</ul>
+    <button type="button" class="route-manual-link" id="route-manual-pick">Stattdessen auf der Karte auswählen</button>
+    <div class="route-planner-actions">
+      <button type="button" id="route-select-back">Zurück</button>
+      <button type="button" class="primary" id="route-select-done">Route erstellen</button>
+    </div>
+  `;
+  body.querySelectorAll('.route-stop-item input[type="checkbox"]').forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const id = Number(cb.dataset.id);
+      if (cb.checked) {
+        if (!routePlan.stops.some((s) => s.id === id)) {
+          const found = routePlan.suggestions.find((s) => s.doctor.id === id);
+          if (found) routePlan.stops.push(found.doctor);
+        }
+      } else {
+        routePlan.stops = routePlan.stops.filter((s) => s.id !== id);
+      }
+    });
+  });
+  document.getElementById("route-select-back").addEventListener("click", renderRouteCountStep);
+  document.getElementById("route-manual-pick").addEventListener("click", startRoutePicking);
+  document.getElementById("route-select-done").addEventListener("click", () => {
+    openGoogleMapsRoute([routePlan.start, ...routePlan.stops]);
+    closeRoutePlanner();
+  });
+}
+
+function startRoutePicking() {
+  document.getElementById("route-planner-backdrop").hidden = true;
+  routePlan.picking = true;
+  routePlan.stops = [];
+  updateRoutePickingBar();
+  document.getElementById("route-picking-bar").hidden = false;
+}
+
+function updateRoutePickingBar() {
+  document.getElementById("route-picking-status").textContent =
+    `${routePlan.stops.length} von ${routePlan.count} ausgewählt — auf der Karte klicken`;
+}
+
+function addRoutePickedDoctor(id) {
+  if (!routePlan || !routePlan.picking) return;
+  if (id === routePlan.start.id) return;
+  if (routePlan.stops.some((s) => s.id === id)) return;
+  if (routePlan.stops.length >= routePlan.count) return;
+  const full = AERZTE_DATA.find((d) => d.id === id);
+  if (!full) return;
+  routePlan.stops.push(full);
+  updateRoutePickingBar();
+}
+
+document.getElementById("route-picking-cancel").addEventListener("click", closeRoutePlanner);
+document.getElementById("route-picking-done").addEventListener("click", () => {
+  if (!routePlan || routePlan.stops.length === 0) { closeRoutePlanner(); return; }
+  openGoogleMapsRoute([routePlan.start, ...routePlan.stops]);
+  closeRoutePlanner();
+});
+document.getElementById("route-planner-close").addEventListener("click", closeRoutePlanner);
+
+// Der "Route"-Button im Popup wird per Event-Delegation behandelt, weil das
+// Popup-HTML bei jedem Öffnen neu erzeugt wird (siehe openDoctorPopup).
+document.addEventListener("click", (e) => {
+  if (e.target.closest(".popup-route-btn") && currentPopupDoctor) {
+    openRoutePlanner(currentPopupDoctor);
+  }
 });

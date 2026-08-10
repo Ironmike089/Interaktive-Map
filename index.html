@@ -44,6 +44,26 @@
 
     <div class="settings-divider"></div>
 
+    <div class="settings-row">
+      <span class="settings-label">Heatmap</span>
+      <label class="switch">
+        <input type="checkbox" id="settings-heatmap-toggle">
+        <span class="switch-slider"></span>
+      </label>
+    </div>
+    <div class="heatmap-scope-row" id="heatmap-scope-row" hidden>
+      <label class="radio-chip">
+        <input type="radio" name="heatmap-scope" value="kunde" id="heatmap-scope-kunde">
+        Nur Kunden
+      </label>
+      <label class="radio-chip">
+        <input type="radio" name="heatmap-scope" value="alle" id="heatmap-scope-alle" checked>
+        Alle Ärzte
+      </label>
+    </div>
+
+    <div class="settings-divider"></div>
+
     <div class="gpa-block">
       <div class="gpa-title">GPA</div>
       <div class="gpa-sub">Gewinn pro Arzt</div>
@@ -125,17 +145,27 @@
     <main class="map-wrap">
       <div id="map"></div>
 
-      <div class="map-controls-extra">
-        <button id="rotate-toggle" class="pill-btn" title="Automatische Rotation ein/aus">
-          <span id="rotate-icon">⏸</span> Rotation
-        </button>
-      </div>
-
       <div class="legend">
         <div class="legend-title">Farbe = Fachrichtung</div>
         <div class="legend-hint">Alle Kategorien &amp; Farben in der Seitenleiste</div>
       </div>
     </main>
+  </div>
+
+  <div class="route-planner-backdrop" id="route-planner-backdrop" hidden>
+    <div class="route-planner" id="route-planner">
+      <div class="route-planner-header">
+        <span>Route planen</span>
+        <button id="route-planner-close" class="icon-btn" title="Abbrechen">×</button>
+      </div>
+      <div id="route-planner-body"></div>
+    </div>
+  </div>
+
+  <div class="route-picking-bar" id="route-picking-bar" hidden>
+    <span id="route-picking-status"></span>
+    <button type="button" class="secondary" id="route-picking-cancel">Abbrechen</button>
+    <button type="button" class="primary" id="route-picking-done">Fertig</button>
   </div>
 
   <script src="vendor/maplibre-gl/maplibre-gl.js"></script>

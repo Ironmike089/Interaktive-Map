@@ -157,6 +157,14 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
 .switch input:checked + .switch-slider { background: var(--accent); }
 .switch input:checked + .switch-slider::before { transform: translateX(17px); }
 
+.heatmap-scope-row { display: flex; gap: 8px; margin-top: 8px; }
+.radio-chip {
+  display: flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px;
+  border: 1px solid var(--border-solid); background: var(--surface-2); font-size: 11.5px; cursor: pointer; user-select: none;
+  font-family: "IBM Plex Mono", monospace;
+}
+.radio-chip input { accent-color: var(--accent); }
+
 .gpa-block { padding-top: 2px; }
 .gpa-title { font-family: "Archivo", sans-serif; font-weight: 700; font-size: 13.5px; }
 .gpa-sub { font-size: 11.5px; color: var(--text-dim); margin-bottom: 10px; }
@@ -340,11 +348,73 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
 .detail-grid dt { font-family: "IBM Plex Mono", monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 2px; }
 .detail-grid dd { margin: 0; font-size: 13px; }
 .detail-actions { display: flex; gap: 8px; }
-.detail-actions a {
+.detail-actions a, .detail-actions button {
   flex: 1; text-align: center; padding: 8px 6px; border-radius: 9px; background: var(--surface-2);
   border: 1px solid var(--border-solid); color: var(--text); text-decoration: none; font-size: 12px; font-weight: 600;
+  font-family: inherit; cursor: pointer;
 }
-.detail-actions a:hover { background: var(--accent-soft); border-color: var(--accent); }
+.detail-actions a:hover, .detail-actions button:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+.route-planner-backdrop {
+  position: fixed; inset: 0; z-index: 30;
+  background: rgba(5, 9, 20, 0.55);
+  display: flex; align-items: center; justify-content: center;
+}
+.route-planner-backdrop[hidden] { display: none; }
+.route-planner {
+  width: 320px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow-y: auto;
+  background: var(--surface-solid); border: 1px solid var(--border-solid); border-radius: 16px;
+  padding: 16px; box-shadow: var(--shadow);
+}
+.route-planner-header {
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: "Archivo", sans-serif; font-weight: 700; font-size: 14px; margin-bottom: 12px;
+}
+.route-planner-title { font-size: 13px; color: var(--text-dim); margin-bottom: 12px; line-height: 1.4; font-family: "Karla", sans-serif; }
+.route-planner-actions { display: flex; gap: 8px; margin-top: 14px; }
+.route-planner-actions button {
+  flex: 1; padding: 9px 10px; border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--border-solid); background: var(--surface-2); color: var(--text); font-family: inherit;
+}
+.route-planner-actions button.primary { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+.route-planner-actions button:hover { filter: brightness(1.08); }
+
+.route-count-row { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
+.route-count-slider { flex: 1; accent-color: var(--accent); }
+.route-count-input {
+  width: 54px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border-solid);
+  background: var(--surface-2); color: var(--text); font-size: 13px; text-align: center; font-family: inherit;
+}
+.route-count-hint { font-size: 11px; color: var(--text-dim); font-family: "IBM Plex Mono", monospace; }
+
+.route-stop-list { list-style: none; margin: 10px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; }
+.route-stop-item {
+  display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 9px;
+  background: var(--surface-2); border: 1px solid var(--border-solid); font-size: 12.5px; font-family: "Karla", sans-serif;
+}
+.route-stop-item input[type="checkbox"] { accent-color: var(--accent); flex-shrink: 0; }
+.route-stop-item .route-stop-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.route-stop-item .route-stop-dist { color: var(--text-dim); font-size: 11px; flex-shrink: 0; font-family: "IBM Plex Mono", monospace; }
+
+.route-manual-link {
+  display: block; text-align: center; font-size: 12px; color: var(--accent); margin-top: 10px;
+  cursor: pointer; background: none; border: none; width: 100%; font-family: inherit;
+}
+.route-manual-link:hover { text-decoration: underline; }
+
+.route-picking-bar {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 25;
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface-solid); border: 1px solid var(--border-solid); border-radius: 999px;
+  padding: 10px 16px; box-shadow: var(--shadow); font-size: 13px; font-family: "Karla", sans-serif;
+}
+.route-picking-bar[hidden] { display: none; }
+.route-picking-bar button {
+  padding: 7px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--border-solid); font-family: inherit;
+}
+.route-picking-bar button.primary { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+.route-picking-bar button.secondary { background: var(--surface-2); color: var(--text); }
 
 @media (max-width: 760px) {
   .stats { display: none; }
@@ -394,6 +464,26 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
       <label class="switch">
         <input type="checkbox" id="settings-rotate-toggle" checked>
         <span class="switch-slider"></span>
+      </label>
+    </div>
+
+    <div class="settings-divider"></div>
+
+    <div class="settings-row">
+      <span class="settings-label">Heatmap</span>
+      <label class="switch">
+        <input type="checkbox" id="settings-heatmap-toggle">
+        <span class="switch-slider"></span>
+      </label>
+    </div>
+    <div class="heatmap-scope-row" id="heatmap-scope-row" hidden>
+      <label class="radio-chip">
+        <input type="radio" name="heatmap-scope" value="kunde" id="heatmap-scope-kunde">
+        Nur Kunden
+      </label>
+      <label class="radio-chip">
+        <input type="radio" name="heatmap-scope" value="alle" id="heatmap-scope-alle" checked>
+        Alle Ärzte
       </label>
     </div>
 
@@ -462,7 +552,6 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
   </aside>
 
   <div class="controls">
-    <button id="rotate-btn" class="pill-btn" type="button"><span id="rotate-icon">⏸</span> Rotation</button>
     <div class="hint">Ziehen = drehen · Scrollen = zoomen</div>
   </div>
 
@@ -491,6 +580,22 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
     </dl>
     <div class="detail-actions" id="d-actions"></div>
   </div>
+</div>
+
+<div class="route-planner-backdrop" id="route-planner-backdrop" hidden>
+  <div class="route-planner" id="route-planner">
+    <div class="route-planner-header">
+      <span>Route planen</span>
+      <button id="route-planner-close" class="ghost-btn" aria-label="Abbrechen" type="button">×</button>
+    </div>
+    <div id="route-planner-body"></div>
+  </div>
+</div>
+
+<div class="route-picking-bar" id="route-picking-bar" hidden>
+  <span id="route-picking-status"></span>
+  <button type="button" class="secondary" id="route-picking-cancel">Abbrechen</button>
+  <button type="button" class="primary" id="route-picking-done">Fertig</button>
 </div>
 
 <script>
@@ -792,6 +897,134 @@ async function loadThree() {
     return { total: targets.length, shown: shown.length, kette: doctor.kette };
   }
 
+  // Heatmap: Three.js hat keinen eingebauten Heatmap-Layer wie MapLibre, daher
+  // eine eigene Dichte-Textur (Grid + Weichzeichnung, kein Draw-Call pro
+  // Punkt) auf ein eigenes Kugel-Mesh gemappt. Das Mesh nutzt dieselbe
+  // Lat/Lng->Vektor-Formel (llToVec) wie die Punktwolke, damit UV und
+  // Position exakt zusammenpassen — die eingebauten SphereGeometry-UVs
+  // würden hier nicht übereinstimmen.
+  const HEAT_LON_SEGS = 96;
+  const HEAT_LAT_SEGS = 48;
+  const heatPositions = [];
+  const heatUVs = [];
+  const heatIndices = [];
+  for (let iy = 0; iy <= HEAT_LAT_SEGS; iy++) {
+    const lat = 90 - (iy / HEAT_LAT_SEGS) * 180;
+    for (let ix = 0; ix <= HEAT_LON_SEGS; ix++) {
+      const lon = -180 + (ix / HEAT_LON_SEGS) * 360;
+      const pos = llToVec(lat, lon, 1.006);
+      heatPositions.push(pos.x, pos.y, pos.z);
+      heatUVs.push(ix / HEAT_LON_SEGS, iy / HEAT_LAT_SEGS);
+    }
+  }
+  for (let iy = 0; iy < HEAT_LAT_SEGS; iy++) {
+    for (let ix = 0; ix < HEAT_LON_SEGS; ix++) {
+      const a = iy * (HEAT_LON_SEGS + 1) + ix;
+      const b = a + HEAT_LON_SEGS + 1;
+      heatIndices.push(a, b, a + 1, a + 1, b, b + 1);
+    }
+  }
+  const heatGeometry = new THREE.BufferGeometry();
+  heatGeometry.setAttribute("position", new THREE.Float32BufferAttribute(heatPositions, 3));
+  heatGeometry.setAttribute("uv", new THREE.Float32BufferAttribute(heatUVs, 2));
+  heatGeometry.setIndex(heatIndices);
+
+  // Auflösung bewusst hoch: bei einer Welt-Textur würde sich ganz
+  // Deutschland (der eigentliche Datenbereich) sonst auf eine Handvoll Pixel
+  // zusammenquetschen und keine regionalen Unterschiede mehr zeigen.
+  const HEAT_W = 720, HEAT_H = 360;
+  const heatCanvas = document.createElement("canvas");
+  heatCanvas.width = HEAT_W;
+  heatCanvas.height = HEAT_H;
+  const heatCtx = heatCanvas.getContext("2d");
+  const heatTexture = new THREE.CanvasTexture(heatCanvas);
+  heatTexture.minFilter = THREE.LinearFilter;
+  heatTexture.magFilter = THREE.LinearFilter;
+  const heatMaterial = new THREE.MeshBasicMaterial({
+    map: heatTexture, transparent: true, depthWrite: false, depthTest: false, blending: THREE.NormalBlending, side: THREE.DoubleSide,
+  });
+  const heatMesh = new THREE.Mesh(heatGeometry, heatMaterial);
+  // depthTest bewusst aus: bei so eng beieinanderliegenden Radien (Kugel bei
+  // 1, Heatmap bei 1.006) reicht die Tiefenpuffer-Genauigkeit nicht aus,
+  // Z-Fighting mit der Kugel/den Gitterlinien darunter macht die Heatmap
+  // sonst zufällig unsichtbar. renderOrder stellt sicher, dass sie nach der
+  // Kugel/dem Gitter gezeichnet wird (die Punktwolke ist ohnehin ausgeblendet,
+  // solange die Heatmap sichtbar ist, siehe setHeatmapVisible).
+  heatMesh.renderOrder = 1;
+  heatMesh.visible = false;
+  globeGroup.add(heatMesh);
+
+  const HEAT_COLOR_STOPS = [
+    [0.0, [0, 0, 0, 0]],
+    [0.2, [63, 208, 199, 110]],
+    [0.4, [79, 140, 255, 150]],
+    [0.6, [245, 166, 35, 185]],
+    [0.8, [231, 76, 60, 215]],
+    [1.0, [255, 255, 255, 255]],
+  ];
+  function heatColorAt(t) {
+    for (let i = 1; i < HEAT_COLOR_STOPS.length; i++) {
+      if (t <= HEAT_COLOR_STOPS[i][0]) {
+        const [t0, c0] = HEAT_COLOR_STOPS[i - 1];
+        const [t1, c1] = HEAT_COLOR_STOPS[i];
+        const f = t1 > t0 ? (t - t0) / (t1 - t0) : 0;
+        return c0.map((v, idx) => Math.round(v + (c1[idx] - v) * f));
+      }
+    }
+    return HEAT_COLOR_STOPS[HEAT_COLOR_STOPS.length - 1][1];
+  }
+
+  function heatmapBlurPass(src, w, h) {
+    const out = new Float32Array(src.length);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let sum = 0, count = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          const yy = y + dy;
+          if (yy < 0 || yy >= h) continue;
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = (x + dx + w) % w; // horizontal wrap, da der Globus in Längengrad umläuft
+            sum += src[yy * w + xx];
+            count++;
+          }
+        }
+        out[y * w + x] = sum / count;
+      }
+    }
+    return out;
+  }
+
+  function updateHeatmapTexture(doctors) {
+    const density = new Float32Array(HEAT_W * HEAT_H);
+    for (const d of doctors) {
+      const gx = Math.min(HEAT_W - 1, Math.max(0, Math.floor(((d.lng + 180) / 360) * HEAT_W)));
+      const gy = Math.min(HEAT_H - 1, Math.max(0, Math.floor(((90 - d.lat) / 180) * HEAT_H)));
+      density[gy * HEAT_W + gx] += Math.max(1, d.groesse || 1);
+    }
+    let blurred = density;
+    for (let i = 0; i < 3; i++) blurred = heatmapBlurPass(blurred, HEAT_W, HEAT_H);
+    let max = 0;
+    for (let i = 0; i < blurred.length; i++) if (blurred[i] > max) max = blurred[i];
+    if (max <= 0) max = 1;
+
+    const imgData = heatCtx.createImageData(HEAT_W, HEAT_H);
+    for (let i = 0; i < blurred.length; i++) {
+      const [r, g, b, a] = heatColorAt(Math.min(1, blurred[i] / max));
+      imgData.data[i * 4] = r;
+      imgData.data[i * 4 + 1] = g;
+      imgData.data[i * 4 + 2] = b;
+      imgData.data[i * 4 + 3] = a;
+    }
+    heatCtx.putImageData(imgData, 0, 0);
+    heatTexture.needsUpdate = true;
+  }
+
+  function setHeatmapVisible(visible, doctors) {
+    heatMesh.visible = visible;
+    pointCloud.visible = !visible;
+    if (visible) updateHeatmapTexture(doctors);
+  }
+
   function onResize() {
     const w = window.innerWidth, h = window.innerHeight;
     renderer.setSize(w, h, false);
@@ -857,7 +1090,13 @@ async function loadThree() {
       const hits = raycaster.intersectObject(pointCloud);
       if (hits.length) {
         const doctor = AERZTE_DATA[visibleIndex[hits[0].index]];
-        if (doctor) selectDoctor(doctor.id);
+        if (doctor) {
+          if (routePlan && routePlan.picking) {
+            addRoutePickedDoctor(doctor.id);
+          } else {
+            selectDoctor(doctor.id);
+          }
+        }
       }
     }
     scheduleResume();
@@ -888,13 +1127,9 @@ async function loadThree() {
 
   function setAutoRotate(value) {
     autoRotateEnabled = value;
-    document.getElementById("rotate-icon").textContent = autoRotateEnabled ? "⏸" : "▶";
     document.getElementById("settings-rotate-toggle").checked = autoRotateEnabled;
   }
 
-  document.getElementById("rotate-btn").addEventListener("click", () => {
-    setAutoRotate(!autoRotateEnabled);
-  });
   document.getElementById("settings-rotate-toggle").addEventListener("change", (e) => {
     setAutoRotate(e.target.checked);
   });
@@ -960,7 +1195,7 @@ async function loadThree() {
   }
 
   // --- UI: search / filters / list / detail (DOM-side, independent of three.js internals) ---
-  window.__medipulse = { selectDoctor, setVisible, deselectDoctor };
+  window.__medipulse = { selectDoctor, setVisible, deselectDoctor, setHeatmapVisible };
   applyFilters();
 })();
 
@@ -988,6 +1223,7 @@ let activeKategorien = new Set(KATEGORIE_KEYS);
 let activeBundeslaender = new Set(BUNDESLAND_LIST);
 let searchTerm = "";
 let selectedId = null;
+let currentDetailDoctor = null;
 let gewinnProArzt = Number(localStorage.getItem("medipulse_gpa")) || 50;
 let minGroesse = 0;
 let maxGroesseInData = 1;
@@ -1062,13 +1298,34 @@ function updateStats() {
   document.getElementById("n-lead").textContent = fmt(data.filter((d) => d.status === "lead").length);
 }
 
+let heatmapEnabled = false;
+
+function heatmapDoctors() {
+  let data = getFiltered();
+  const scope = document.querySelector('input[name="heatmap-scope"]:checked').value;
+  if (scope === "kunde") data = data.filter((d) => d.status === "kunde");
+  return data;
+}
+
 function applyFilters() {
   renderList();
   updateStats();
   if (window.__medipulse) {
     window.__medipulse.setVisible(getFiltered());
+    if (heatmapEnabled) window.__medipulse.setHeatmapVisible(true, heatmapDoctors());
   }
 }
+
+document.getElementById("settings-heatmap-toggle").addEventListener("change", (e) => {
+  heatmapEnabled = e.target.checked;
+  document.getElementById("heatmap-scope-row").hidden = !heatmapEnabled;
+  window.__medipulse && window.__medipulse.setHeatmapVisible(heatmapEnabled, heatmapDoctors());
+});
+document.querySelectorAll('input[name="heatmap-scope"]').forEach((r) => {
+  r.addEventListener("change", () => {
+    if (heatmapEnabled) window.__medipulse.setHeatmapVisible(true, heatmapDoctors());
+  });
+});
 
 function groesseThresholdFromPercent(pct) {
   if (pct <= 0) return 0;
@@ -1089,6 +1346,7 @@ function sizePercent(n) {
 }
 
 function showDetail(d) {
+  currentDetailDoctor = d;
   document.getElementById("detail").hidden = false;
   const kategorie = d.kategorie || "sonstige";
   const statusEl = document.getElementById("d-status");
@@ -1129,11 +1387,10 @@ function showDetail(d) {
   if (d.notizen) { document.getElementById("d-notes").textContent = d.notizen; notesRow.hidden = false; }
   else notesRow.hidden = true;
 
-  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}&travelmode=driving`;
   const actions = [];
   if (d.telefon) actions.push(`<a href="tel:${esc(d.telefon)}">Anrufen</a>`);
   if (d.email) actions.push(`<a href="mailto:${esc(d.email)}">E-Mail</a>`);
-  actions.push(`<a href="${mapsUrl}" target="_blank" rel="noopener">Route</a>`);
+  actions.push(`<button type="button" class="popup-route-btn">Route</button>`);
   document.getElementById("d-actions").innerHTML = actions.join("");
 }
 
@@ -1277,6 +1534,189 @@ document.getElementById("groesse-input").addEventListener("input", (e) => {
 
 document.getElementById("panel-toggle").addEventListener("click", () => {
   document.getElementById("panel").classList.toggle("collapsed");
+});
+
+// --- Routenplaner: von einer Praxis aus optional mehrere weitere Stopps in
+// eine gemeinsame Google-Maps-Route mit Zwischenstopps einbinden (analog zur
+// echten Karte, hier basierend auf getFiltered()/AERZTE_DATA statt MapLibre) ---
+const ROUTE_MAX_STOPS = 8;
+let routePlan = null;
+
+function haversineKm(a, b) {
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const la1 = (a.lat * Math.PI) / 180;
+  const la2 = (b.lat * Math.PI) / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function openGoogleMapsRoute(doctors) {
+  if (doctors.length === 1) {
+    const d = doctors[0];
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}&travelmode=driving`, "_blank", "noopener");
+    return;
+  }
+  const origin = doctors[0];
+  const destination = doctors[doctors.length - 1];
+  const waypoints = doctors.slice(1, -1).map((d) => `${d.lat},${d.lng}`).join("|");
+  let url = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}&travelmode=driving`;
+  if (waypoints) url += `&waypoints=${encodeURIComponent(waypoints)}`;
+  window.open(url, "_blank", "noopener");
+}
+
+function openRoutePlanner(doctor) {
+  routePlan = { start: doctor, count: 1, stops: [], suggestions: [], picking: false };
+  document.getElementById("route-planner-backdrop").hidden = false;
+  renderRouteConfirmStep();
+}
+
+function closeRoutePlanner() {
+  routePlan = null;
+  document.getElementById("route-planner-backdrop").hidden = true;
+  document.getElementById("route-picking-bar").hidden = true;
+}
+
+function renderRouteConfirmStep() {
+  const body = document.getElementById("route-planner-body");
+  body.innerHTML = `
+    <div class="route-planner-title">Möchtest du weitere Praxen in die Route zu <strong>${esc(routePlan.start.name)}</strong> einbinden?</div>
+    <div class="route-planner-actions">
+      <button type="button" id="route-confirm-no">Nein, direkt öffnen</button>
+      <button type="button" class="primary" id="route-confirm-yes">Ja, mehrere einbinden</button>
+    </div>
+  `;
+  document.getElementById("route-confirm-no").addEventListener("click", () => {
+    openGoogleMapsRoute([routePlan.start]);
+    closeRoutePlanner();
+  });
+  document.getElementById("route-confirm-yes").addEventListener("click", renderRouteCountStep);
+}
+
+function renderRouteCountStep() {
+  const body = document.getElementById("route-planner-body");
+  body.innerHTML = `
+    <div class="route-planner-title">Wie viele weitere Praxen sollen in die Route?</div>
+    <div class="route-count-row">
+      <input type="range" id="route-count-slider" class="route-count-slider" min="1" max="${ROUTE_MAX_STOPS}" step="1" value="${routePlan.count}">
+      <input type="number" id="route-count-input" class="route-count-input" min="1" max="${ROUTE_MAX_STOPS}" step="1" value="${routePlan.count}">
+    </div>
+    <div class="route-count-hint">max. ${ROUTE_MAX_STOPS} zusätzliche Stopps</div>
+    <div class="route-planner-actions">
+      <button type="button" id="route-count-back">Zurück</button>
+      <button type="button" class="primary" id="route-count-next">Weiter</button>
+    </div>
+  `;
+  const slider = document.getElementById("route-count-slider");
+  const input = document.getElementById("route-count-input");
+  slider.addEventListener("input", () => { input.value = slider.value; });
+  input.addEventListener("input", () => {
+    const v = Math.max(1, Math.min(ROUTE_MAX_STOPS, Math.round(Number(input.value) || 1)));
+    slider.value = v;
+  });
+  document.getElementById("route-count-back").addEventListener("click", renderRouteConfirmStep);
+  document.getElementById("route-count-next").addEventListener("click", () => {
+    routePlan.count = Math.max(1, Math.min(ROUTE_MAX_STOPS, Math.round(Number(input.value) || 1)));
+    renderRouteSelectStep();
+  });
+}
+
+function suggestNearbyDoctors() {
+  const pool = getFiltered().filter((d) => d.id !== routePlan.start.id);
+  return pool
+    .map((d) => ({ doctor: d, dist: haversineKm(routePlan.start, d) }))
+    // Kollegen an derselben Adresse sind als Route-Zwischenstopp sinnlos.
+    .filter((s) => s.dist > 0.05)
+    .sort((a, b) => a.dist - b.dist)
+    .slice(0, routePlan.count);
+}
+
+function renderRouteSelectStep() {
+  routePlan.suggestions = suggestNearbyDoctors();
+  routePlan.stops = routePlan.suggestions.map((s) => s.doctor);
+  renderRouteSelectBody();
+}
+
+function renderRouteSelectBody() {
+  const body = document.getElementById("route-planner-body");
+  const items = routePlan.suggestions
+    .map(({ doctor, dist }) => {
+      const checked = routePlan.stops.some((s) => s.id === doctor.id) ? "checked" : "";
+      return `
+        <li class="route-stop-item">
+          <input type="checkbox" data-id="${doctor.id}" ${checked}>
+          <span class="route-stop-name">${esc(doctor.name)} · ${esc(doctor.stadt)}</span>
+          <span class="route-stop-dist">${dist.toFixed(1)} km</span>
+        </li>`;
+    })
+    .join("");
+  body.innerHTML = `
+    <div class="route-planner-title">Vorschläge in der Nähe von <strong>${esc(routePlan.start.name)}</strong> (bis zu ${routePlan.count}):</div>
+    <ul class="route-stop-list">${items || '<li class="route-stop-item">Keine weiteren Praxen in der aktuellen Ansicht gefunden.</li>'}</ul>
+    <button type="button" class="route-manual-link" id="route-manual-pick">Stattdessen auf dem Globus auswählen</button>
+    <div class="route-planner-actions">
+      <button type="button" id="route-select-back">Zurück</button>
+      <button type="button" class="primary" id="route-select-done">Route erstellen</button>
+    </div>
+  `;
+  body.querySelectorAll('.route-stop-item input[type="checkbox"]').forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const id = Number(cb.dataset.id);
+      if (cb.checked) {
+        if (!routePlan.stops.some((s) => s.id === id)) {
+          const found = routePlan.suggestions.find((s) => s.doctor.id === id);
+          if (found) routePlan.stops.push(found.doctor);
+        }
+      } else {
+        routePlan.stops = routePlan.stops.filter((s) => s.id !== id);
+      }
+    });
+  });
+  document.getElementById("route-select-back").addEventListener("click", renderRouteCountStep);
+  document.getElementById("route-manual-pick").addEventListener("click", startRoutePicking);
+  document.getElementById("route-select-done").addEventListener("click", () => {
+    openGoogleMapsRoute([routePlan.start, ...routePlan.stops]);
+    closeRoutePlanner();
+  });
+}
+
+function startRoutePicking() {
+  document.getElementById("route-planner-backdrop").hidden = true;
+  routePlan.picking = true;
+  routePlan.stops = [];
+  updateRoutePickingBar();
+  document.getElementById("route-picking-bar").hidden = false;
+}
+
+function updateRoutePickingBar() {
+  document.getElementById("route-picking-status").textContent =
+    `${routePlan.stops.length} von ${routePlan.count} ausgewählt — auf dem Globus klicken`;
+}
+
+function addRoutePickedDoctor(id) {
+  if (!routePlan || !routePlan.picking) return;
+  if (id === routePlan.start.id) return;
+  if (routePlan.stops.some((s) => s.id === id)) return;
+  if (routePlan.stops.length >= routePlan.count) return;
+  const full = AERZTE_DATA.find((d) => d.id === id);
+  if (!full) return;
+  routePlan.stops.push(full);
+  updateRoutePickingBar();
+}
+
+document.getElementById("route-picking-cancel").addEventListener("click", closeRoutePlanner);
+document.getElementById("route-picking-done").addEventListener("click", () => {
+  if (!routePlan || routePlan.stops.length === 0) { closeRoutePlanner(); return; }
+  openGoogleMapsRoute([routePlan.start, ...routePlan.stops]);
+  closeRoutePlanner();
+});
+document.getElementById("route-planner-close").addEventListener("click", closeRoutePlanner);
+
+document.addEventListener("click", (e) => {
+  if (e.target.closest(".popup-route-btn") && currentDetailDoctor) {
+    openRoutePlanner(currentDetailDoctor);
+  }
 });
 
 renderList();
