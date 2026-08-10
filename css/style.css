@@ -197,7 +197,7 @@ html, body {
 .switch input:checked + .switch-slider { background: var(--accent); }
 .switch input:checked + .switch-slider::before { transform: translateX(17px); }
 
-.heatmap-scope-row { display: flex; gap: 8px; margin-top: 8px; }
+.heatmap-scope-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .radio-chip {
   display: flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px;
   border: 1px solid var(--border); background: var(--panel-2); font-size: 11.5px; cursor: pointer; user-select: none;
@@ -223,6 +223,7 @@ html, body {
 .app {
   display: flex;
   height: calc(100% - 64px);
+  position: relative;
 }
 
 .sidebar {
@@ -238,10 +239,28 @@ html, body {
   margin-left: -340px;
 }
 
+/* Bleibt außerhalb der Sidebar (eigenes Geschwister-Element), damit er beim
+   Einklappen sichtbar bleibt und mit an den Bildschirmrand wandert, statt
+   mit der Sidebar komplett zu verschwinden. */
+.sidebar-collapse-btn {
+  position: absolute;
+  top: 22px;
+  left: 286px;
+  z-index: 6;
+  transition: left 0.2s ease;
+}
+.sidebar.collapsed ~ .sidebar-collapse-btn {
+  left: 8px;
+}
+.sidebar-collapse-btn span { display: inline-block; transition: transform 0.2s ease; }
+.sidebar.collapsed ~ .sidebar-collapse-btn span { transform: rotate(180deg); }
+
 .sidebar-section {
   padding: 12px 14px;
   border-bottom: 1px solid var(--border);
 }
+
+.search-row #search { width: calc(100% - 46px); }
 
 #search {
   width: 100%;

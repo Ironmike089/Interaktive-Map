@@ -25,7 +25,6 @@
 
     <img src="assets/medipulse-logo.png" alt="Medipulse" class="topbar-logo" id="topbar-logo" onerror="this.style.display='none'">
     <button id="settings-toggle" class="icon-btn" title="Einstellungen">⚙️</button>
-    <button id="sidebar-toggle" class="icon-btn" title="Liste ein-/ausblenden">☰</button>
   </header>
 
   <div class="settings-panel" id="settings-panel" hidden>
@@ -54,11 +53,15 @@
     <div class="heatmap-scope-row" id="heatmap-scope-row" hidden>
       <label class="radio-chip">
         <input type="radio" name="heatmap-scope" value="kunde" id="heatmap-scope-kunde">
-        Nur Kunden
+        Kunden
+      </label>
+      <label class="radio-chip">
+        <input type="radio" name="heatmap-scope" value="lead" id="heatmap-scope-lead">
+        Leads
       </label>
       <label class="radio-chip">
         <input type="radio" name="heatmap-scope" value="alle" id="heatmap-scope-alle" checked>
-        Alle Ärzte
+        Alle
       </label>
     </div>
 
@@ -77,7 +80,7 @@
 
   <div class="app">
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-section">
+      <div class="sidebar-section search-row">
         <input type="text" id="search" placeholder="Suche nach Name, Stadt, Fachrichtung…" />
       </div>
 
@@ -141,6 +144,8 @@
         <ul id="doctor-list" class="doctor-list"></ul>
       </div>
     </aside>
+
+    <button id="sidebar-toggle" class="icon-btn sidebar-collapse-btn" title="Liste ein-/ausblenden"><span id="sidebar-collapse-icon">‹</span></button>
 
     <main class="map-wrap">
       <div id="map"></div>

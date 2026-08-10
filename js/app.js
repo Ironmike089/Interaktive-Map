@@ -589,29 +589,31 @@ function setupMapLayers() {
     },
   });
 
-  // Heatmap (optional, per Einstellungen umschaltbar) — eigene Quelle statt
-  // der geclusterten "aerzte"-Quelle, damit sie unabhängig von der aktuellen
-  // Cluster-Auflösung eine durchgehende Dichtefläche zeigen kann.
+  // Heatmap (optional, per Einstellungen umschaltbar). MapLibres eingebauter
+  // "heatmap"-Layer-Typ braucht Float-Texturen, die auf manchen WebGL-
+  // Implementierungen (u.a. Software-Rendering) gar nicht rendern — deshalb
+  // bewusst ein eigenes Dichte-Raster als normaler "circle"-Layer (mit
+  // circle-blur für den weichen Rand), der überall zuverlässig funktioniert.
   map.addSource("heatmap-source", { type: "geojson", data: EMPTY_FC });
   map.addLayer({
     id: "heatmap-layer",
-    type: "heatmap",
+    type: "circle",
     source: "heatmap-source",
     layout: { visibility: "none" },
     paint: {
-      "heatmap-weight": ["interpolate", ["linear"], ["coalesce", ["get", "groesse"], 1], 1, 0.3, 20, 1],
-      "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 9, 3],
-      "heatmap-color": [
-        "interpolate", ["linear"], ["heatmap-density"],
-        0, "rgba(0,0,0,0)",
-        0.2, "#3fd0c7",
-        0.4, "#4f8cff",
-        0.6, "#f5a623",
-        0.8, "#e74c3c",
-        1, "#ffffff",
+      "circle-radius": [
+        "interpolate", ["linear"], ["zoom"],
+        4, ["interpolate", ["linear"], ["get", "density"], 0, 5, 1, 24],
+        9, ["interpolate", ["linear"], ["get", "density"], 0, 12, 1, 60],
       ],
-      "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 4, 9, 30],
-      "heatmap-opacity": 0.75,
+      "circle-color": [
+        "interpolate", ["linear"], ["get", "density"],
+        0, "#2ecc71",
+        0.5, "#f5d020",
+        1, "#e74c3c",
+      ],
+      "circle-opacity": ["interpolate", ["linear"], ["get", "density"], 0, 0.25, 1, 0.7],
+      "circle-blur": 0.7,
     },
   });
 
@@ -871,11 +873,55 @@ function updateStats() {
 
 let heatmapEnabled = false;
 
+// Rasterisiert die aktuell gefilterten Praxen zu einem Dichte-Grid (statt
+// jeden Rohpunkt einzeln zu zeichnen) — Zellgröße richtet sich nach der
+// tatsächlichen Ausdehnung der Daten, damit es bei einer Bundesland-
+// Auswahl genauso gut auflöst wie bundesweit.
+const HEATMAP_GRID_SIZE = 55;
+
 function heatmapGeoJSON() {
-  let data = getFilteredData();
-  const scope = document.querySelector('input[name="heatmap-scope"]:checked').value;
-  if (scope === "kunde") data = data.filter((d) => d.status === "kunde");
-  return toGeoJSON(data);
+  const data = getFilteredData();
+  if (data.length === 0) return EMPTY_FC;
+
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  for (const d of data) {
+    if (d.lat < minLat) minLat = d.lat;
+    if (d.lat > maxLat) maxLat = d.lat;
+    if (d.lng < minLng) minLng = d.lng;
+    if (d.lng > maxLng) maxLng = d.lng;
+  }
+  const latStep = (maxLat - minLat || 1) / HEATMAP_GRID_SIZE;
+  const lngStep = (maxLng - minLng || 1) / HEATMAP_GRID_SIZE;
+
+  const cells = new Map();
+  for (const d of data) {
+    const gx = Math.min(HEATMAP_GRID_SIZE - 1, Math.floor((d.lng - minLng) / lngStep));
+    const gy = Math.min(HEATMAP_GRID_SIZE - 1, Math.floor((d.lat - minLat) / latStep));
+    const key = gx + "," + gy;
+    const weight = Math.max(1, d.groesse || 1);
+    const entry = cells.get(key);
+    if (entry) {
+      entry.count++;
+      entry.sumLat += d.lat;
+      entry.sumLng += d.lng;
+      entry.weight += weight;
+    } else {
+      cells.set(key, { count: 1, sumLat: d.lat, sumLng: d.lng, weight });
+    }
+  }
+
+  let maxWeight = 0;
+  for (const c of cells.values()) if (c.weight > maxWeight) maxWeight = c.weight;
+
+  const features = [];
+  for (const c of cells.values()) {
+    features.push({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [c.sumLng / c.count, c.sumLat / c.count] },
+      properties: { density: maxWeight ? c.weight / maxWeight : 0 },
+    });
+  }
+  return { type: "FeatureCollection", features };
 }
 
 function updateHeatmap() {
@@ -894,12 +940,22 @@ function setHeatmapVisible(visible) {
   if (visible) updateHeatmap();
 }
 
+// Kunde/Lead/Alle ist kein separater Heatmap-Filter, sondern setzt direkt
+// den normalen Status-Filter (inkl. Checkboxen in der Seitenleiste) — die
+// Heatmap zeigt danach automatisch dieselbe gefilterte Menge wie die Karte.
 document.getElementById("settings-heatmap-toggle").addEventListener("change", (e) => {
   document.getElementById("heatmap-scope-row").hidden = !e.target.checked;
   setHeatmapVisible(e.target.checked);
 });
 document.querySelectorAll('input[name="heatmap-scope"]').forEach((r) => {
-  r.addEventListener("change", () => { if (heatmapEnabled) updateHeatmap(); });
+  r.addEventListener("change", () => {
+    const scope = r.value;
+    activeStatuses = scope === "alle" ? new Set(["kunde", "interessent", "lead", "inaktiv"]) : new Set([scope]);
+    document.querySelectorAll('.filters input[data-status]').forEach((cb) => {
+      cb.checked = activeStatuses.has(cb.dataset.status);
+    });
+    applyFilters();
+  });
 });
 
 function applyFilters() {

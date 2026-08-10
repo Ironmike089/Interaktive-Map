@@ -157,7 +157,7 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
 .switch input:checked + .switch-slider { background: var(--accent); }
 .switch input:checked + .switch-slider::before { transform: translateX(17px); }
 
-.heatmap-scope-row { display: flex; gap: 8px; margin-top: 8px; }
+.heatmap-scope-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .radio-chip {
   display: flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px;
   border: 1px solid var(--border-solid); background: var(--surface-2); font-size: 11.5px; cursor: pointer; user-select: none;
@@ -479,11 +479,15 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
     <div class="heatmap-scope-row" id="heatmap-scope-row" hidden>
       <label class="radio-chip">
         <input type="radio" name="heatmap-scope" value="kunde" id="heatmap-scope-kunde">
-        Nur Kunden
+        Kunden
+      </label>
+      <label class="radio-chip">
+        <input type="radio" name="heatmap-scope" value="lead" id="heatmap-scope-lead">
+        Leads
       </label>
       <label class="radio-chip">
         <input type="radio" name="heatmap-scope" value="alle" id="heatmap-scope-alle" checked>
-        Alle Ärzte
+        Alle
       </label>
     </div>
 
@@ -954,13 +958,13 @@ async function loadThree() {
   heatMesh.visible = false;
   globeGroup.add(heatMesh);
 
+  // Grün (wenig) -> Gelb (mittel) -> Rot (am meisten) — dieselbe Konvention
+  // wie der Praxisgrößen-Balken an anderer Stelle in der App.
   const HEAT_COLOR_STOPS = [
     [0.0, [0, 0, 0, 0]],
-    [0.2, [63, 208, 199, 110]],
-    [0.4, [79, 140, 255, 150]],
-    [0.6, [245, 166, 35, 185]],
-    [0.8, [231, 76, 60, 215]],
-    [1.0, [255, 255, 255, 255]],
+    [0.15, [46, 204, 113, 130]],
+    [0.5, [245, 208, 32, 180]],
+    [1.0, [231, 76, 60, 225]],
   ];
   function heatColorAt(t) {
     for (let i = 1; i < HEAT_COLOR_STOPS.length; i++) {
@@ -1300,30 +1304,31 @@ function updateStats() {
 
 let heatmapEnabled = false;
 
-function heatmapDoctors() {
-  let data = getFiltered();
-  const scope = document.querySelector('input[name="heatmap-scope"]:checked').value;
-  if (scope === "kunde") data = data.filter((d) => d.status === "kunde");
-  return data;
-}
-
 function applyFilters() {
   renderList();
   updateStats();
   if (window.__medipulse) {
     window.__medipulse.setVisible(getFiltered());
-    if (heatmapEnabled) window.__medipulse.setHeatmapVisible(true, heatmapDoctors());
+    if (heatmapEnabled) window.__medipulse.setHeatmapVisible(true, getFiltered());
   }
 }
 
 document.getElementById("settings-heatmap-toggle").addEventListener("change", (e) => {
   heatmapEnabled = e.target.checked;
   document.getElementById("heatmap-scope-row").hidden = !heatmapEnabled;
-  window.__medipulse && window.__medipulse.setHeatmapVisible(heatmapEnabled, heatmapDoctors());
+  window.__medipulse && window.__medipulse.setHeatmapVisible(heatmapEnabled, getFiltered());
 });
+// Kunde/Lead/Alle setzt direkt den normalen Status-Filter (inkl. Chips in
+// der Seitenleiste) — die Heatmap zeigt danach automatisch dieselbe
+// gefilterte Menge wie der Globus selbst.
 document.querySelectorAll('input[name="heatmap-scope"]').forEach((r) => {
   r.addEventListener("change", () => {
-    if (heatmapEnabled) window.__medipulse.setHeatmapVisible(true, heatmapDoctors());
+    const scope = r.value;
+    activeStatuses = scope === "alle" ? new Set(["kunde", "interessent", "lead", "inaktiv"]) : new Set([scope]);
+    document.querySelectorAll('.chips input[type="checkbox"]').forEach((cb) => {
+      cb.checked = activeStatuses.has(cb.dataset.status);
+    });
+    applyFilters();
   });
 });
 
