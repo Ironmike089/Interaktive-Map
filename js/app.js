@@ -1036,6 +1036,12 @@ document.getElementById("settings-close").addEventListener("click", () => {
   document.getElementById("settings-panel").hidden = true;
 });
 document.addEventListener("click", (e) => {
+  // composedPath() statt e.target: Klicks, die das Panel per innerHTML
+  // neu rendern (z.B. Statistik-Zähler), hängen ihr Ziel-Element dabei
+  // aus, sodass panel.contains(e.target) danach fälschlich "außerhalb"
+  // meldet und das Panel sofort wieder schließt. composedPath() bildet
+  // den DOM-Pfad zum Zeitpunkt des Klicks ab und bleibt davon unberührt.
+  const path = e.composedPath();
   [
     ["settings-panel", "settings-toggle"],
     ["auth-panel", "user-badge"],
@@ -1043,7 +1049,7 @@ document.addEventListener("click", (e) => {
   ].forEach(([panelId, toggleId]) => {
     const panel = document.getElementById(panelId);
     const toggleBtn = document.getElementById(toggleId);
-    if (!panel.hidden && !panel.contains(e.target) && !toggleBtn.contains(e.target)) {
+    if (!panel.hidden && !path.includes(panel) && !path.includes(toggleBtn)) {
       panel.hidden = true;
     }
   });
@@ -1416,32 +1422,109 @@ document.getElementById("auth-logout").addEventListener("click", () => {
   logoutUser();
 });
 
-// --- Statistik (pro Konto, nur lokal) ---
+// --- Statistik (pro Konto, nur lokal, mit Tagesverlauf & Streaks) ---
 const STAT_CATEGORIES = [
   { key: "anrufe", label: "Anrufe", emoji: "📞" },
   { key: "termine", label: "Vor-Ort-Termine", emoji: "🚗" },
   { key: "kunden", label: "Neue Kunden", emoji: "🤝" },
   { key: "emails", label: "E-Mails", emoji: "✉️" },
 ];
+const STAT_RANGES = [
+  { key: "day", label: "Tag" },
+  { key: "week", label: "Woche" },
+  { key: "month", label: "Monat" },
+  { key: "year", label: "Jahr" },
+];
+const STAT_RANGE_HINT = {
+  day: "letzte 14 Tage",
+  week: "letzte 8 Wochen",
+  month: "letzte 12 Monate",
+  year: "letzte 5 Jahre",
+};
+
+let statsRange = "week";
+let statsMetric = "total";
+let pendingStreakPop = null;
 
 function statsKey(user) {
   return `medipulse_stats_${user}`;
 }
+
+function dateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function loadStats(user) {
+  let stats;
   try {
-    return JSON.parse(localStorage.getItem(statsKey(user)) || "null") || { counters: {}, notes: [] };
+    stats = JSON.parse(localStorage.getItem(statsKey(user)) || "null");
   } catch {
-    return { counters: {}, notes: [] };
+    stats = null;
   }
+  if (!stats) stats = { history: {}, notes: [] };
+  if (!stats.history) stats.history = {};
+  if (!stats.notes) stats.notes = [];
+  if (stats.counters) {
+    // Migration von der alten reinen Zähler-Version auf den Tagesverlauf
+    const today = dateStr(new Date());
+    if (!stats.history[today]) stats.history[today] = {};
+    STAT_CATEGORIES.forEach((c) => {
+      if (stats.counters[c.key] && !stats.history[today][c.key]) {
+        stats.history[today][c.key] = stats.counters[c.key];
+      }
+    });
+    delete stats.counters;
+    saveStats(user, stats);
+  }
+  return stats;
 }
 function saveStats(user, stats) {
   localStorage.setItem(statsKey(user), JSON.stringify(stats));
 }
 
+function todayValue(history, key) {
+  const day = history[dateStr(new Date())];
+  return (day && day[key]) || 0;
+}
+
+function currentStreak(history, key) {
+  const cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+  if (!((history[dateStr(cursor)] || {})[key] > 0)) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  let streak = 0;
+  while ((history[dateStr(cursor)] || {})[key] > 0) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+function longestStreakCount(history, key) {
+  const days = Object.keys(history)
+    .filter((d) => (history[d][key] || 0) > 0)
+    .sort();
+  if (!days.length) return 0;
+  let longest = 1;
+  let run = 1;
+  for (let i = 1; i < days.length; i++) {
+    const diffDays = Math.round((new Date(days[i]) - new Date(days[i - 1])) / 86400000);
+    run = diffDays === 1 ? run + 1 : 1;
+    longest = Math.max(longest, run);
+  }
+  return longest;
+}
+
 function bumpStat(key, delta) {
   if (!currentUser) return;
   const stats = loadStats(currentUser);
-  stats.counters[key] = Math.max(0, (stats.counters[key] || 0) + delta);
+  const today = dateStr(new Date());
+  if (!stats.history[today]) stats.history[today] = {};
+  const before = stats.history[today][key] || 0;
+  const after = Math.max(0, before + delta);
+  stats.history[today][key] = after;
+  if (before === 0 && after > 0) pendingStreakPop = key;
   saveStats(currentUser, stats);
   renderSalesStatsPanel();
 }
@@ -1452,6 +1535,150 @@ function addStatNote(text) {
   stats.notes.unshift({ date: new Date().toLocaleDateString("de-DE"), text: text.trim() });
   saveStats(currentUser, stats);
   renderSalesStatsPanel();
+}
+
+function mondayOf(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = (day === 0 ? -6 : 1) - day;
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
+function isoWeekNumber(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+function buildBuckets(range, offset) {
+  const shift = offset || 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const buckets = [];
+  if (range === "day") {
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i - shift);
+      buckets.push({
+        label: d.toLocaleDateString("de-DE", { weekday: "short" }).replace(".", ""),
+        dates: [dateStr(d)],
+      });
+    }
+  } else if (range === "week") {
+    const thisMonday = mondayOf(today);
+    for (let i = 7; i >= 0; i--) {
+      const monday = new Date(thisMonday);
+      monday.setDate(monday.getDate() - (i + shift) * 7);
+      const dates = [];
+      for (let j = 0; j < 7; j++) {
+        const d = new Date(monday);
+        d.setDate(d.getDate() + j);
+        dates.push(dateStr(d));
+      }
+      buckets.push({ label: `KW${isoWeekNumber(monday)}`, dates });
+    }
+  } else if (range === "month") {
+    for (let i = 11; i >= 0; i--) {
+      const m = new Date(today.getFullYear(), today.getMonth() - i - shift, 1);
+      const daysInMonth = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
+      const dates = [];
+      for (let day = 1; day <= daysInMonth; day++) dates.push(dateStr(new Date(m.getFullYear(), m.getMonth(), day)));
+      buckets.push({ label: m.toLocaleDateString("de-DE", { month: "short" }).replace(".", ""), dates });
+    }
+  } else {
+    const startYear = today.getFullYear() - 4 - shift * 5;
+    for (let y = startYear; y <= startYear + 4; y++) {
+      buckets.push({ label: String(y), yearPrefix: `${y}-` });
+    }
+  }
+  return buckets;
+}
+
+function bucketValue(history, bucket, metric) {
+  const sumDay = (dateKey) => {
+    const day = history[dateKey];
+    if (!day) return 0;
+    if (metric === "total") return STAT_CATEGORIES.reduce((s, c) => s + (day[c.key] || 0), 0);
+    return day[metric] || 0;
+  };
+  if (bucket.yearPrefix) {
+    return Object.keys(history)
+      .filter((d) => d.startsWith(bucket.yearPrefix))
+      .reduce((s, d) => s + sumDay(d), 0);
+  }
+  return bucket.dates.reduce((s, d) => s + sumDay(d), 0);
+}
+
+function animateCountUp(el, target) {
+  const startTime = performance.now();
+  const duration = 550;
+  function tick(now) {
+    const progress = Math.min(1, (now - startTime) / duration);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(target * eased).toLocaleString("de-DE");
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function renderStatsChart(history) {
+  const buckets = buildBuckets(statsRange, 0);
+  const values = buckets.map((b) => bucketValue(history, b, statsMetric));
+  const total = values.reduce((a, b) => a + b, 0);
+
+  const prevBuckets = buildBuckets(statsRange, 1);
+  const prevTotal = prevBuckets.reduce((s, b) => s + bucketValue(history, b, statsMetric), 0);
+
+  animateCountUp(document.getElementById("stat-chart-total"), total);
+
+  const metricLabel = statsMetric === "total" ? "Gesamt" : STAT_CATEGORIES.find((c) => c.key === statsMetric).label;
+  document.getElementById("stat-chart-sub").textContent = `${metricLabel} · ${STAT_RANGE_HINT[statsRange]}`;
+
+  const deltaEl = document.getElementById("stat-chart-delta");
+  if (prevTotal > 0) {
+    const pct = Math.round(((total - prevTotal) / prevTotal) * 100);
+    deltaEl.textContent = `${pct >= 0 ? "▲" : "▼"} ${Math.abs(pct)}%`;
+    deltaEl.className = `stat-chart-delta ${pct >= 0 ? "up" : "down"}`;
+  } else if (total > 0) {
+    deltaEl.textContent = "▲ neu";
+    deltaEl.className = "stat-chart-delta up";
+  } else {
+    deltaEl.textContent = "";
+    deltaEl.className = "stat-chart-delta";
+  }
+
+  const wrap = document.getElementById("stat-chart-wrap");
+  const max = Math.max(1, ...values);
+  const W = 300;
+  const H = 130;
+  const gap = 3;
+  const barW = (W - gap * (values.length - 1)) / values.length;
+  const baseline = H - 20;
+  const bars = values
+    .map((v, i) => {
+      const h = Math.round((v / max) * (baseline - 6));
+      const x = (i * (barW + gap)).toFixed(1);
+      return `<rect class="stat-bar" x="${x}" y="${baseline}" width="${barW.toFixed(1)}" height="0" rx="2.5" data-y="${(baseline - h).toFixed(1)}" data-h="${h}"><title>${v}</title></rect>`;
+    })
+    .join("");
+  const labels = buckets
+    .map((b, i) => {
+      const x = (i * (barW + gap) + barW / 2).toFixed(1);
+      return `<text class="stat-bar-label" x="${x}" y="${H - 6}" text-anchor="middle">${escapeHtml(b.label)}</text>`;
+    })
+    .join("");
+  wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" class="stat-chart-svg" preserveAspectRatio="none">${bars}${labels}</svg>`;
+  requestAnimationFrame(() => {
+    wrap.querySelectorAll(".stat-bar").forEach((rect, i) => {
+      setTimeout(() => {
+        rect.setAttribute("y", rect.dataset.y);
+        rect.setAttribute("height", rect.dataset.h);
+      }, i * 22);
+    });
+  });
 }
 
 function renderSalesStatsPanel() {
@@ -1465,23 +1692,61 @@ function renderSalesStatsPanel() {
   loggedOutBox.hidden = true;
   body.hidden = false;
   const stats = loadStats(currentUser);
-  const counterRows = STAT_CATEGORIES.map(
-    (c) => `
+
+  const streakRows = STAT_CATEGORIES.map((c) => {
+    const streak = currentStreak(stats.history, c.key);
+    const record = longestStreakCount(stats.history, c.key);
+    const isPop = pendingStreakPop === c.key;
+    return `
     <div class="stat-counter-row">
-      <span class="stat-counter-label">${c.emoji} ${escapeHtml(c.label)}</span>
-      <div class="stat-counter-controls">
-        <button type="button" class="stat-counter-btn" data-action="dec" data-key="${c.key}">–</button>
-        <span class="stat-counter-value">${stats.counters[c.key] || 0}</span>
-        <button type="button" class="stat-counter-btn" data-action="inc" data-key="${c.key}">+</button>
+      <div class="stat-counter-top">
+        <span class="stat-counter-label">${c.emoji} ${escapeHtml(c.label)}</span>
+        <span class="stat-streak-badge ${streak > 0 ? "active" : ""}">
+          <span class="stat-streak-flame ${isPop ? "pop" : ""}">${streak > 0 ? "🔥" : "💤"}</span>
+          <span class="stat-streak-num">${streak}</span>
+          ${record > 1 ? `<span class="stat-streak-record">Rekord ${record}</span>` : ""}
+        </span>
       </div>
-    </div>`
+      <div class="stat-counter-bottom">
+        <span class="stat-counter-today-label">Heute</span>
+        <div class="stat-counter-controls">
+          <button type="button" class="stat-counter-btn" data-action="dec" data-key="${c.key}">–</button>
+          <span class="stat-counter-value">${todayValue(stats.history, c.key)}</span>
+          <button type="button" class="stat-counter-btn" data-action="inc" data-key="${c.key}">+</button>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+  pendingStreakPop = null;
+
+  const rangeTabs = STAT_RANGES.map(
+    (r) => `<button type="button" class="stat-tab ${statsRange === r.key ? "active" : ""}" data-range="${r.key}">${r.label}</button>`
   ).join("");
+  const metricTabs = [{ key: "total", emoji: "📊", label: "Gesamt" }, ...STAT_CATEGORIES]
+    .map(
+      (m) =>
+        `<button type="button" class="stat-tab stat-tab-metric ${statsMetric === m.key ? "active" : ""}" data-metric="${m.key}" title="${escapeHtml(m.label)}">${m.emoji}</button>`
+    )
+    .join("");
+
   const noteItems = stats.notes
     .slice(0, 20)
     .map((n) => `<li class="stat-note-item"><span class="stat-note-date">${escapeHtml(n.date)}</span>${escapeHtml(n.text)}</li>`)
     .join("");
+
   body.innerHTML = `
-    ${counterRows}
+    <div class="stat-streak-title">🔥 Streaks</div>
+    ${streakRows}
+    <div class="settings-divider"></div>
+    <div class="stat-tabs-row">${rangeTabs}</div>
+    <div class="stat-tabs-row stat-tabs-row-metric">${metricTabs}</div>
+    <div class="stat-chart-summary">
+      <span class="stat-chart-total" id="stat-chart-total">0</span>
+      <span class="stat-chart-delta" id="stat-chart-delta"></span>
+      <span class="stat-chart-sub" id="stat-chart-sub"></span>
+    </div>
+    <div class="stat-chart-wrap" id="stat-chart-wrap"></div>
+    <div class="settings-divider"></div>
     <div class="stat-notes-title">Notizen</div>
     <div class="stat-note-input-row">
       <input type="text" id="stat-note-input" class="stat-note-input" placeholder="z.B. Termin bei Dr. Müller vereinbart">
@@ -1489,8 +1754,23 @@ function renderSalesStatsPanel() {
     </div>
     <ul class="stat-note-list">${noteItems || '<li class="stat-note-item">Noch keine Notizen.</li>'}</ul>
   `;
+
   body.querySelectorAll(".stat-counter-btn").forEach((btn) => {
     btn.addEventListener("click", () => bumpStat(btn.dataset.key, btn.dataset.action === "inc" ? 1 : -1));
+  });
+  body.querySelectorAll("[data-range]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (statsRange === btn.dataset.range) return;
+      statsRange = btn.dataset.range;
+      renderSalesStatsPanel();
+    });
+  });
+  body.querySelectorAll("[data-metric]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (statsMetric === btn.dataset.metric) return;
+      statsMetric = btn.dataset.metric;
+      renderSalesStatsPanel();
+    });
   });
   const noteInput = document.getElementById("stat-note-input");
   document.getElementById("stat-note-add").addEventListener("click", () => {
@@ -1503,6 +1783,8 @@ function renderSalesStatsPanel() {
       noteInput.value = "";
     }
   });
+
+  renderStatsChart(stats.history);
 }
 
 document.getElementById("sales-stats-toggle").addEventListener("click", () => {

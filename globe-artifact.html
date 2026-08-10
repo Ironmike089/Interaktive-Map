@@ -210,12 +210,22 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
 .auth-current-name { font-size: 13px; margin-bottom: 10px; font-family: "Karla", sans-serif; }
 .auth-hint { font-size: 10.5px; color: var(--text-dim); line-height: 1.4; margin-top: 10px; font-family: "Karla", sans-serif; }
 
+#sales-stats-panel { width: 340px; max-height: 82vh; overflow-y: auto; }
+
+.stat-streak-title {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 6px;
+  font-family: "IBM Plex Mono", monospace;
+}
+
 .stat-counter-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  display: flex; flex-direction: column; gap: 5px;
   padding: 8px 0; border-bottom: 1px solid var(--border-solid);
 }
 .stat-counter-row:last-of-type { border-bottom: none; }
+.stat-counter-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.stat-counter-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .stat-counter-label { font-size: 12.5px; display: flex; align-items: center; gap: 6px; font-family: "Karla", sans-serif; }
+.stat-counter-today-label { font-size: 10.5px; color: var(--text-dim); font-family: "Karla", sans-serif; }
 .stat-counter-value { font-size: 15px; font-weight: 700; min-width: 28px; text-align: center; font-family: "Archivo", sans-serif; }
 .stat-counter-controls { display: flex; align-items: center; gap: 6px; }
 .stat-counter-btn {
@@ -224,6 +234,48 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
   display: flex; align-items: center; justify-content: center;
 }
 .stat-counter-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+.stat-streak-badge {
+  display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text-dim); opacity: 0.6;
+  font-family: "Karla", sans-serif;
+}
+.stat-streak-badge.active { opacity: 1; color: var(--text); }
+.stat-streak-flame { font-size: 14px; display: inline-block; }
+.stat-streak-flame.pop { animation: flame-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes flame-pop {
+  0% { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+  55% { transform: scale(1.3) rotate(6deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+.stat-streak-num { font-weight: 700; }
+.stat-streak-record { font-size: 10px; color: var(--text-dim); }
+
+.stat-tabs-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 6px; }
+.stat-tabs-row-metric { margin-bottom: 4px; }
+.stat-tab {
+  padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border-solid);
+  background: var(--surface-2); color: var(--text-dim); font-size: 11px; cursor: pointer;
+  font-family: "IBM Plex Mono", monospace;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.stat-tab:hover { background: var(--accent-soft); }
+.stat-tab.active { background: var(--accent); border-color: var(--accent); color: #06201d; }
+.stat-tab-metric { padding: 5px 10px; font-size: 13px; }
+
+.stat-chart-summary { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
+.stat-chart-total { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; font-family: "Archivo", sans-serif; }
+.stat-chart-delta { font-size: 12px; font-weight: 700; font-family: "IBM Plex Mono", monospace; }
+.stat-chart-delta.up { color: var(--s-kunde); }
+.stat-chart-delta.down { color: #e2554a; }
+.stat-chart-sub { font-size: 11px; color: var(--text-dim); width: 100%; font-family: "Karla", sans-serif; }
+
+.stat-chart-wrap { width: 100%; margin: 6px 0 4px; }
+.stat-chart-svg { width: 100%; height: 130px; display: block; overflow: visible; }
+.stat-bar {
+  fill: var(--accent);
+  transition: y 0.5s cubic-bezier(0.22, 1.3, 0.4, 1), height 0.5s cubic-bezier(0.22, 1.3, 0.4, 1);
+}
+.stat-bar-label { font-size: 6.5px; fill: var(--text-dim); font-family: inherit; }
 
 .stat-notes-title {
   font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin: 12px 0 6px;
@@ -1533,6 +1585,11 @@ document.getElementById("settings-close").addEventListener("click", () => {
   document.getElementById("settings-panel").hidden = true;
 });
 document.addEventListener("click", (e) => {
+  // composedPath() statt e.target: Klicks, die das Panel per innerHTML
+  // neu rendern (z.B. Statistik-Zähler), hängen ihr Ziel-Element dabei
+  // aus, sodass panel.contains(e.target) danach fälschlich "außerhalb"
+  // meldet und das Panel sofort wieder schließt.
+  const path = e.composedPath();
   [
     ["settings-panel", "settings-toggle"],
     ["auth-panel", "user-badge"],
@@ -1540,7 +1597,7 @@ document.addEventListener("click", (e) => {
   ].forEach(([panelId, toggleId]) => {
     const panel = document.getElementById(panelId);
     const toggleBtn = document.getElementById(toggleId);
-    if (!panel.hidden && !panel.contains(e.target) && !toggleBtn.contains(e.target)) {
+    if (!panel.hidden && !path.includes(panel) && !path.includes(toggleBtn)) {
       panel.hidden = true;
     }
   });
@@ -1673,32 +1730,109 @@ document.getElementById("auth-logout").addEventListener("click", () => {
   logoutUser();
 });
 
-// --- Statistik (pro Konto, nur lokal) ---
+// --- Statistik (pro Konto, nur lokal, mit Tagesverlauf & Streaks) ---
 const STAT_CATEGORIES = [
   { key: "anrufe", label: "Anrufe", emoji: "📞" },
   { key: "termine", label: "Vor-Ort-Termine", emoji: "🚗" },
   { key: "kunden", label: "Neue Kunden", emoji: "🤝" },
   { key: "emails", label: "E-Mails", emoji: "✉️" },
 ];
+const STAT_RANGES = [
+  { key: "day", label: "Tag" },
+  { key: "week", label: "Woche" },
+  { key: "month", label: "Monat" },
+  { key: "year", label: "Jahr" },
+];
+const STAT_RANGE_HINT = {
+  day: "letzte 14 Tage",
+  week: "letzte 8 Wochen",
+  month: "letzte 12 Monate",
+  year: "letzte 5 Jahre",
+};
+
+let statsRange = "week";
+let statsMetric = "total";
+let pendingStreakPop = null;
 
 function statsKey(user) {
   return `medipulse_stats_${user}`;
 }
+
+function dateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function loadStats(user) {
+  let stats;
   try {
-    return JSON.parse(localStorage.getItem(statsKey(user)) || "null") || { counters: {}, notes: [] };
+    stats = JSON.parse(localStorage.getItem(statsKey(user)) || "null");
   } catch {
-    return { counters: {}, notes: [] };
+    stats = null;
   }
+  if (!stats) stats = { history: {}, notes: [] };
+  if (!stats.history) stats.history = {};
+  if (!stats.notes) stats.notes = [];
+  if (stats.counters) {
+    // Migration von der alten reinen Zähler-Version auf den Tagesverlauf
+    const today = dateStr(new Date());
+    if (!stats.history[today]) stats.history[today] = {};
+    STAT_CATEGORIES.forEach((c) => {
+      if (stats.counters[c.key] && !stats.history[today][c.key]) {
+        stats.history[today][c.key] = stats.counters[c.key];
+      }
+    });
+    delete stats.counters;
+    saveStats(user, stats);
+  }
+  return stats;
 }
 function saveStats(user, stats) {
   localStorage.setItem(statsKey(user), JSON.stringify(stats));
 }
 
+function todayValue(history, key) {
+  const day = history[dateStr(new Date())];
+  return (day && day[key]) || 0;
+}
+
+function currentStreak(history, key) {
+  const cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+  if (!((history[dateStr(cursor)] || {})[key] > 0)) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  let streak = 0;
+  while ((history[dateStr(cursor)] || {})[key] > 0) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+function longestStreakCount(history, key) {
+  const days = Object.keys(history)
+    .filter((d) => (history[d][key] || 0) > 0)
+    .sort();
+  if (!days.length) return 0;
+  let longest = 1;
+  let run = 1;
+  for (let i = 1; i < days.length; i++) {
+    const diffDays = Math.round((new Date(days[i]) - new Date(days[i - 1])) / 86400000);
+    run = diffDays === 1 ? run + 1 : 1;
+    longest = Math.max(longest, run);
+  }
+  return longest;
+}
+
 function bumpStat(key, delta) {
   if (!currentUser) return;
   const stats = loadStats(currentUser);
-  stats.counters[key] = Math.max(0, (stats.counters[key] || 0) + delta);
+  const today = dateStr(new Date());
+  if (!stats.history[today]) stats.history[today] = {};
+  const before = stats.history[today][key] || 0;
+  const after = Math.max(0, before + delta);
+  stats.history[today][key] = after;
+  if (before === 0 && after > 0) pendingStreakPop = key;
   saveStats(currentUser, stats);
   renderSalesStatsPanel();
 }
@@ -1709,6 +1843,150 @@ function addStatNote(text) {
   stats.notes.unshift({ date: new Date().toLocaleDateString("de-DE"), text: text.trim() });
   saveStats(currentUser, stats);
   renderSalesStatsPanel();
+}
+
+function mondayOf(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = (day === 0 ? -6 : 1) - day;
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
+function isoWeekNumber(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+function buildBuckets(range, offset) {
+  const shift = offset || 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const buckets = [];
+  if (range === "day") {
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i - shift);
+      buckets.push({
+        label: d.toLocaleDateString("de-DE", { weekday: "short" }).replace(".", ""),
+        dates: [dateStr(d)],
+      });
+    }
+  } else if (range === "week") {
+    const thisMonday = mondayOf(today);
+    for (let i = 7; i >= 0; i--) {
+      const monday = new Date(thisMonday);
+      monday.setDate(monday.getDate() - (i + shift) * 7);
+      const dates = [];
+      for (let j = 0; j < 7; j++) {
+        const d = new Date(monday);
+        d.setDate(d.getDate() + j);
+        dates.push(dateStr(d));
+      }
+      buckets.push({ label: `KW${isoWeekNumber(monday)}`, dates });
+    }
+  } else if (range === "month") {
+    for (let i = 11; i >= 0; i--) {
+      const m = new Date(today.getFullYear(), today.getMonth() - i - shift, 1);
+      const daysInMonth = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
+      const dates = [];
+      for (let day = 1; day <= daysInMonth; day++) dates.push(dateStr(new Date(m.getFullYear(), m.getMonth(), day)));
+      buckets.push({ label: m.toLocaleDateString("de-DE", { month: "short" }).replace(".", ""), dates });
+    }
+  } else {
+    const startYear = today.getFullYear() - 4 - shift * 5;
+    for (let y = startYear; y <= startYear + 4; y++) {
+      buckets.push({ label: String(y), yearPrefix: `${y}-` });
+    }
+  }
+  return buckets;
+}
+
+function bucketValue(history, bucket, metric) {
+  const sumDay = (dateKey) => {
+    const day = history[dateKey];
+    if (!day) return 0;
+    if (metric === "total") return STAT_CATEGORIES.reduce((s, c) => s + (day[c.key] || 0), 0);
+    return day[metric] || 0;
+  };
+  if (bucket.yearPrefix) {
+    return Object.keys(history)
+      .filter((d) => d.startsWith(bucket.yearPrefix))
+      .reduce((s, d) => s + sumDay(d), 0);
+  }
+  return bucket.dates.reduce((s, d) => s + sumDay(d), 0);
+}
+
+function animateCountUp(el, target) {
+  const startTime = performance.now();
+  const duration = 550;
+  function tick(now) {
+    const progress = Math.min(1, (now - startTime) / duration);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(target * eased).toLocaleString("de-DE");
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function renderStatsChart(history) {
+  const buckets = buildBuckets(statsRange, 0);
+  const values = buckets.map((b) => bucketValue(history, b, statsMetric));
+  const total = values.reduce((a, b) => a + b, 0);
+
+  const prevBuckets = buildBuckets(statsRange, 1);
+  const prevTotal = prevBuckets.reduce((s, b) => s + bucketValue(history, b, statsMetric), 0);
+
+  animateCountUp(document.getElementById("stat-chart-total"), total);
+
+  const metricLabel = statsMetric === "total" ? "Gesamt" : STAT_CATEGORIES.find((c) => c.key === statsMetric).label;
+  document.getElementById("stat-chart-sub").textContent = `${metricLabel} · ${STAT_RANGE_HINT[statsRange]}`;
+
+  const deltaEl = document.getElementById("stat-chart-delta");
+  if (prevTotal > 0) {
+    const pct = Math.round(((total - prevTotal) / prevTotal) * 100);
+    deltaEl.textContent = `${pct >= 0 ? "▲" : "▼"} ${Math.abs(pct)}%`;
+    deltaEl.className = `stat-chart-delta ${pct >= 0 ? "up" : "down"}`;
+  } else if (total > 0) {
+    deltaEl.textContent = "▲ neu";
+    deltaEl.className = "stat-chart-delta up";
+  } else {
+    deltaEl.textContent = "";
+    deltaEl.className = "stat-chart-delta";
+  }
+
+  const wrap = document.getElementById("stat-chart-wrap");
+  const max = Math.max(1, ...values);
+  const W = 300;
+  const H = 130;
+  const gap = 3;
+  const barW = (W - gap * (values.length - 1)) / values.length;
+  const baseline = H - 20;
+  const bars = values
+    .map((v, i) => {
+      const h = Math.round((v / max) * (baseline - 6));
+      const x = (i * (barW + gap)).toFixed(1);
+      return `<rect class="stat-bar" x="${x}" y="${baseline}" width="${barW.toFixed(1)}" height="0" rx="2.5" data-y="${(baseline - h).toFixed(1)}" data-h="${h}"><title>${v}</title></rect>`;
+    })
+    .join("");
+  const labels = buckets
+    .map((b, i) => {
+      const x = (i * (barW + gap) + barW / 2).toFixed(1);
+      return `<text class="stat-bar-label" x="${x}" y="${H - 6}" text-anchor="middle">${esc(b.label)}</text>`;
+    })
+    .join("");
+  wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" class="stat-chart-svg" preserveAspectRatio="none">${bars}${labels}</svg>`;
+  requestAnimationFrame(() => {
+    wrap.querySelectorAll(".stat-bar").forEach((rect, i) => {
+      setTimeout(() => {
+        rect.setAttribute("y", rect.dataset.y);
+        rect.setAttribute("height", rect.dataset.h);
+      }, i * 22);
+    });
+  });
 }
 
 function renderSalesStatsPanel() {
@@ -1722,23 +2000,61 @@ function renderSalesStatsPanel() {
   loggedOutBox.hidden = true;
   body.hidden = false;
   const stats = loadStats(currentUser);
-  const counterRows = STAT_CATEGORIES.map(
-    (c) => `
+
+  const streakRows = STAT_CATEGORIES.map((c) => {
+    const streak = currentStreak(stats.history, c.key);
+    const record = longestStreakCount(stats.history, c.key);
+    const isPop = pendingStreakPop === c.key;
+    return `
     <div class="stat-counter-row">
-      <span class="stat-counter-label">${c.emoji} ${esc(c.label)}</span>
-      <div class="stat-counter-controls">
-        <button type="button" class="stat-counter-btn" data-action="dec" data-key="${c.key}">–</button>
-        <span class="stat-counter-value">${stats.counters[c.key] || 0}</span>
-        <button type="button" class="stat-counter-btn" data-action="inc" data-key="${c.key}">+</button>
+      <div class="stat-counter-top">
+        <span class="stat-counter-label">${c.emoji} ${esc(c.label)}</span>
+        <span class="stat-streak-badge ${streak > 0 ? "active" : ""}">
+          <span class="stat-streak-flame ${isPop ? "pop" : ""}">${streak > 0 ? "🔥" : "💤"}</span>
+          <span class="stat-streak-num">${streak}</span>
+          ${record > 1 ? `<span class="stat-streak-record">Rekord ${record}</span>` : ""}
+        </span>
       </div>
-    </div>`
+      <div class="stat-counter-bottom">
+        <span class="stat-counter-today-label">Heute</span>
+        <div class="stat-counter-controls">
+          <button type="button" class="stat-counter-btn" data-action="dec" data-key="${c.key}">–</button>
+          <span class="stat-counter-value">${todayValue(stats.history, c.key)}</span>
+          <button type="button" class="stat-counter-btn" data-action="inc" data-key="${c.key}">+</button>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+  pendingStreakPop = null;
+
+  const rangeTabs = STAT_RANGES.map(
+    (r) => `<button type="button" class="stat-tab ${statsRange === r.key ? "active" : ""}" data-range="${r.key}">${r.label}</button>`
   ).join("");
+  const metricTabs = [{ key: "total", emoji: "📊", label: "Gesamt" }, ...STAT_CATEGORIES]
+    .map(
+      (m) =>
+        `<button type="button" class="stat-tab stat-tab-metric ${statsMetric === m.key ? "active" : ""}" data-metric="${m.key}" title="${esc(m.label)}">${m.emoji}</button>`
+    )
+    .join("");
+
   const noteItems = stats.notes
     .slice(0, 20)
     .map((n) => `<li class="stat-note-item"><span class="stat-note-date">${esc(n.date)}</span>${esc(n.text)}</li>`)
     .join("");
+
   body.innerHTML = `
-    ${counterRows}
+    <div class="stat-streak-title">🔥 Streaks</div>
+    ${streakRows}
+    <div class="settings-divider"></div>
+    <div class="stat-tabs-row">${rangeTabs}</div>
+    <div class="stat-tabs-row stat-tabs-row-metric">${metricTabs}</div>
+    <div class="stat-chart-summary">
+      <span class="stat-chart-total" id="stat-chart-total">0</span>
+      <span class="stat-chart-delta" id="stat-chart-delta"></span>
+      <span class="stat-chart-sub" id="stat-chart-sub"></span>
+    </div>
+    <div class="stat-chart-wrap" id="stat-chart-wrap"></div>
+    <div class="settings-divider"></div>
     <div class="stat-notes-title">Notizen</div>
     <div class="stat-note-input-row">
       <input type="text" id="stat-note-input" class="stat-note-input" placeholder="z.B. Termin bei Dr. Müller vereinbart">
@@ -1746,8 +2062,23 @@ function renderSalesStatsPanel() {
     </div>
     <ul class="stat-note-list">${noteItems || '<li class="stat-note-item">Noch keine Notizen.</li>'}</ul>
   `;
+
   body.querySelectorAll(".stat-counter-btn").forEach((btn) => {
     btn.addEventListener("click", () => bumpStat(btn.dataset.key, btn.dataset.action === "inc" ? 1 : -1));
+  });
+  body.querySelectorAll("[data-range]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (statsRange === btn.dataset.range) return;
+      statsRange = btn.dataset.range;
+      renderSalesStatsPanel();
+    });
+  });
+  body.querySelectorAll("[data-metric]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (statsMetric === btn.dataset.metric) return;
+      statsMetric = btn.dataset.metric;
+      renderSalesStatsPanel();
+    });
   });
   const noteInput = document.getElementById("stat-note-input");
   document.getElementById("stat-note-add").addEventListener("click", () => {
@@ -1760,6 +2091,8 @@ function renderSalesStatsPanel() {
       noteInput.value = "";
     }
   });
+
+  renderStatsChart(stats.history);
 }
 
 document.getElementById("sales-stats-toggle").addEventListener("click", () => {
