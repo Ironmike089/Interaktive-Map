@@ -91,6 +91,7 @@ let selectedId = null;
 let currentPopupDoctor = null;
 
 let gewinnProArzt = Number(localStorage.getItem("medipulse_gpa")) || 50;
+let geminiWorkerUrl = (localStorage.getItem("medipulse_gemini_worker_url") || "").trim();
 let minGroesse = 0;
 let maxGroesseInData = 1;
 
@@ -796,11 +797,17 @@ function deleteInfosheet(doctorId) {
 
 // "Infosheet erstellen" legt sofort ein Infosheet an (Steckbrief aus den
 // AOK-Basisdaten ist damit direkt in der Infothek als PDF vorhanden) statt
-// erst ein leeres Formular zu zeigen. Die recherchierten Zusatzfelder
-// (Trigger, Aufhänger, ...) kommen danach über "Bearbeiten" dazu.
-function createInfosheet(d) {
+// erst ein leeres Formular zu zeigen. Ist eine Gemini-Worker-URL in den
+// Einstellungen hinterlegt, wird währenddessen automatisch recherchiert und
+// Trigger/Firmografie/Struktur/Produkt/Aufhänger gleich mit befüllt; ohne
+// URL (oder bei einem Fehler) bleibt es beim Steckbrief-Infosheet — die
+// recherchierten Zusatzfelder lassen sich danach jederzeit über
+// "Bearbeiten" von Hand ergänzen.
+let infosheetResearchPending = null;
+
+async function createInfosheet(d) {
   const today = new Date().toLocaleDateString("de-DE");
-  saveInfosheet(d.id, {
+  const sheet = {
     createdBy: currentUser || "Unbekannt",
     createdAt: today,
     updatedAt: today,
@@ -810,7 +817,50 @@ function createInfosheet(d) {
     struktur: "",
     produkt: "",
     aufhaenger: [],
-  });
+  };
+
+  if (!geminiWorkerUrl) {
+    saveInfosheet(d.id, sheet);
+    refreshPopupFor(d.id);
+    return;
+  }
+
+  infosheetResearchPending = d.id;
+  refreshPopupFor(d.id);
+
+  try {
+    const res = await fetch(geminiWorkerUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: d.name,
+        einrichtung: d.einrichtung,
+        strasse: d.strasse,
+        plz: d.plz,
+        stadt: d.stadt,
+        bundesland: d.bundesland,
+        fachrichtung: d.fachrichtung,
+        website: d.website,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+    const r = data.result || {};
+    Object.assign(sheet, {
+      trigger: r.trigger || "",
+      verkauft: r.verkauft || "",
+      firmografie: r.firmografie || "",
+      struktur: r.struktur || "",
+      produkt: r.produkt || "",
+      aufhaenger: Array.isArray(r.aufhaenger) ? r.aufhaenger.slice(0, 3) : [],
+    });
+  } catch (err) {
+    console.warn("Gemini-Recherche fehlgeschlagen, Infosheet nur mit Steckbrief gespeichert:", err);
+  } finally {
+    infosheetResearchPending = null;
+    saveInfosheet(d.id, sheet);
+    refreshPopupFor(d.id);
+  }
 }
 
 let infothekExpandedFor = null;
@@ -1057,7 +1107,9 @@ function infothekHtml(d) {
   const sheet = getInfosheet(d.id);
   const expanded = infothekExpandedFor === d.id;
   let body;
-  if (sheet) {
+  if (infosheetResearchPending === d.id) {
+    body = `<div class="infothek-empty">🔎 Recherchiere Praxis-Infos …</div>`;
+  } else if (sheet) {
     const fileName = infosheetFileName(d);
     body = `
       <button type="button" class="infosheet-file" data-id="${d.id}">
@@ -1167,6 +1219,16 @@ function openDoctorPopup(d, coords) {
 
 function refreshOpenPopup() {
   if (currentPopupDoctor) {
+    openDoctorPopup(currentPopupDoctor, popup.getLngLat());
+  }
+}
+
+// Wie refreshOpenPopup(), aber sicher für asynchrone Aufrufer (z.B. nach
+// einer Gemini-Recherche): falls der Nutzer inzwischen eine andere Praxis
+// geöffnet oder das Popup geschlossen hat, darf das NICHT versehentlich
+// deren Popup mit den (falschen) Ergebnissen überschreiben.
+function refreshPopupFor(doctorId) {
+  if (currentPopupDoctor && currentPopupDoctor.id === doctorId) {
     openDoctorPopup(currentPopupDoctor, popup.getLngLat());
   }
 }
@@ -1491,6 +1553,12 @@ document.getElementById("gpa-input").addEventListener("input", (e) => setGewinnP
 document.getElementById("gpa-slider").value = gewinnProArzt;
 document.getElementById("gpa-input").value = gewinnProArzt;
 
+document.getElementById("settings-gemini-worker-url").value = geminiWorkerUrl;
+document.getElementById("settings-gemini-worker-url").addEventListener("input", (e) => {
+  geminiWorkerUrl = e.target.value.trim();
+  localStorage.setItem("medipulse_gemini_worker_url", geminiWorkerUrl);
+});
+
 // --- Filter-Kacheln auf-/zuklappen (Status, Fachrichtung & MVZ, Größe) ---
 document.querySelectorAll(".chevron-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -1716,9 +1784,8 @@ document.addEventListener("click", (e) => {
   }
   const createBtn = e.target.closest(".infosheet-create-btn");
   if (createBtn && currentPopupDoctor) {
-    createInfosheet(currentPopupDoctor);
     infothekExpandedFor = currentPopupDoctor.id;
-    refreshOpenPopup();
+    createInfosheet(currentPopupDoctor);
   }
   const fileBtn = e.target.closest(".infosheet-file");
   if (fileBtn && currentPopupDoctor) openOrDownloadInfosheetPdf(currentPopupDoctor);
