@@ -1010,8 +1010,26 @@ function infosheetFileName(d) {
   return `Infosheet_${slugifyFilename(d.name)}.pdf`;
 }
 
-function infosheetFileDataUrl(d, sheet) {
-  return buildInfosheetPdf(d, sheet).output("datauristring");
+// data:-URIs im <a href> waren unzuverlässig (blockiert je nach Browser/
+// Sandbox die Kombination aus download-Attribut + target="_blank", vor
+// allem in eingebetteten/eingeschränkten Kontexten). Blob-URLs + ein
+// tatsächlicher Klick auf ein <a download> sind der robustere,
+// browserübergreifend unterstützte Weg, eine Datei zu öffnen/speichern.
+function openOrDownloadInfosheetPdf(d) {
+  const sheet = getInfosheet(d.id);
+  if (!sheet) return;
+  const blob = buildInfosheetPdf(d, sheet).output("blob");
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, "_blank");
+  if (!win) {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = infosheetFileName(d);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
 function renderInfosheetContent(sheet) {
@@ -1041,15 +1059,14 @@ function infothekHtml(d) {
   let body;
   if (sheet) {
     const fileName = infosheetFileName(d);
-    const fileUrl = infosheetFileDataUrl(d, sheet);
     body = `
-      <a class="infosheet-file" href="${fileUrl}" download="${escapeHtml(fileName)}" target="_blank" rel="noopener">
+      <button type="button" class="infosheet-file" data-id="${d.id}">
         <span class="infosheet-file-icon">📄</span>
         <span class="infosheet-file-info">
           <span class="infosheet-file-name">${escapeHtml(fileName)}</span>
           <span class="infosheet-file-hint">PDF öffnen / herunterladen</span>
         </span>
-      </a>
+      </button>
       ${renderInfosheetContent(sheet)}
       <div class="infosheet-meta">Erstellt von ${escapeHtml(sheet.createdBy || "Unbekannt")} · zuletzt aktualisiert am ${escapeHtml(sheet.updatedAt || sheet.createdAt || "")}</div>
       <div class="infosheet-actions">
@@ -1703,6 +1720,8 @@ document.addEventListener("click", (e) => {
     infothekExpandedFor = currentPopupDoctor.id;
     refreshOpenPopup();
   }
+  const fileBtn = e.target.closest(".infosheet-file");
+  if (fileBtn && currentPopupDoctor) openOrDownloadInfosheetPdf(currentPopupDoctor);
   const editBtn = e.target.closest(".infosheet-edit-btn");
   if (editBtn && currentPopupDoctor) openInfosheetEditor(currentPopupDoctor);
   const deleteBtn = e.target.closest(".infosheet-delete-btn");
