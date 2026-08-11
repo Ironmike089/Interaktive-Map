@@ -796,6 +796,116 @@ function deleteInfosheet(doctorId) {
 
 let infothekExpandedFor = null;
 
+function slugifyFilename(text) {
+  const slug = String(text || "praxis")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return slug || "praxis";
+}
+
+// Baut das Infosheet clientseitig als echtes PDF (jsPDF, vendored — keine
+// Server-Anbindung nötig), immer frisch aus den gespeicherten Feldern, statt
+// die Bytes selbst zu persistieren. So bleibt die Datei automatisch mit den
+// zuletzt gespeicherten Angaben synchron.
+function buildInfosheetPdf(d, sheet) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const marginX = 18;
+  const maxWidth = doc.internal.pageSize.getWidth() - marginX * 2;
+  let y = 20;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(140);
+  doc.text("MEDIPULSE · INFOSHEET", marginX, y);
+  y += 9;
+
+  doc.setFontSize(18);
+  doc.setTextColor(20);
+  doc.text(d.name, marginX, y);
+  y += 7;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10.5);
+  doc.setTextColor(90);
+  doc.text(`${d.fachrichtung || ""} · ${d.stadt || ""}`, marginX, y);
+  y += 10;
+
+  const ensureSpace = (needed) => {
+    if (y + needed > 280) {
+      doc.addPage();
+      y = 20;
+    }
+  };
+
+  const section = (label, text) => {
+    if (!text) return;
+    ensureSpace(10);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(35, 95, 200);
+    doc.text(label.toUpperCase(), marginX, y);
+    y += 5.5;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10.5);
+    doc.setTextColor(25);
+    doc.splitTextToSize(text, maxWidth).forEach((line) => {
+      ensureSpace(5.2);
+      doc.text(line, marginX, y);
+      y += 5.2;
+    });
+    y += 4;
+  };
+
+  section("Trigger", sheet.trigger);
+  section("Was die Praxis verkauft", sheet.verkauft);
+  section("Firmografie", sheet.firmografie);
+  section("Struktur", sheet.struktur);
+  section("Produkt", sheet.produkt);
+
+  const theses = (sheet.aufhaenger || []).filter((t) => t && t.trim());
+  if (theses.length) {
+    ensureSpace(10);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(35, 95, 200);
+    doc.text("DER AUFHÄNGER", marginX, y);
+    y += 5.5;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10.5);
+    doc.setTextColor(25);
+    theses.forEach((t, i) => {
+      doc.splitTextToSize(`${i + 1}. ${t}`, maxWidth).forEach((line) => {
+        ensureSpace(5.2);
+        doc.text(line, marginX, y);
+        y += 5.2;
+      });
+      y += 1.5;
+    });
+  }
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(150);
+  doc.text(
+    `Erstellt von ${sheet.createdBy || "Unbekannt"} · zuletzt aktualisiert am ${sheet.updatedAt || sheet.createdAt || ""}`,
+    marginX,
+    290
+  );
+
+  return doc;
+}
+
+function infosheetFileName(d) {
+  return `Infosheet_${slugifyFilename(d.name)}.pdf`;
+}
+
+function infosheetFileDataUrl(d, sheet) {
+  return buildInfosheetPdf(d, sheet).output("datauristring");
+}
+
 function renderInfosheetContent(sheet) {
   const rows = [];
   const section = (label, text) =>
@@ -820,17 +930,29 @@ function renderInfosheetContent(sheet) {
 function infothekHtml(d) {
   const sheet = getInfosheet(d.id);
   const expanded = infothekExpandedFor === d.id;
-  const body = sheet
-    ? `
+  let body;
+  if (sheet) {
+    const fileName = infosheetFileName(d);
+    const fileUrl = infosheetFileDataUrl(d, sheet);
+    body = `
+      <a class="infosheet-file" href="${fileUrl}" download="${escapeHtml(fileName)}" target="_blank" rel="noopener">
+        <span class="infosheet-file-icon">📄</span>
+        <span class="infosheet-file-info">
+          <span class="infosheet-file-name">${escapeHtml(fileName)}</span>
+          <span class="infosheet-file-hint">PDF öffnen / herunterladen</span>
+        </span>
+      </a>
       ${renderInfosheetContent(sheet)}
       <div class="infosheet-meta">Erstellt von ${escapeHtml(sheet.createdBy || "Unbekannt")} · zuletzt aktualisiert am ${escapeHtml(sheet.updatedAt || sheet.createdAt || "")}</div>
       <div class="infosheet-actions">
         <button type="button" class="infosheet-edit-btn" data-id="${d.id}">Bearbeiten</button>
         <button type="button" class="infosheet-delete-btn" data-id="${d.id}">Löschen</button>
-      </div>`
-    : `
+      </div>`;
+  } else {
+    body = `
       <div class="infothek-empty">Noch kein Infosheet vorhanden.</div>
       <button type="button" class="infosheet-create-btn" data-id="${d.id}">+ Infosheet erstellen</button>`;
+  }
   return `
     <div class="infothek">
       <button type="button" class="infothek-toggle" data-id="${d.id}">📄 Infothek <span class="infothek-chevron">${expanded ? "▴" : "▾"}</span></button>

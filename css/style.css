@@ -404,6 +404,22 @@ html, body {
 .infothek-chevron { color: var(--text-dim); }
 .infothek-body { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; }
 .infothek-empty { font-size: 12px; color: var(--text-dim); }
+.infosheet-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: var(--panel-2);
+  text-decoration: none;
+  color: var(--text);
+}
+.infosheet-file:hover { background: var(--border); }
+.infosheet-file-icon { font-size: 22px; flex-shrink: 0; }
+.infosheet-file-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.infosheet-file-name { font-size: 12.5px; font-weight: 700; overflow-wrap: anywhere; }
+.infosheet-file-hint { font-size: 10.5px; color: var(--accent); }
 .infosheet-create-btn {
   align-self: flex-start;
   padding: 7px 10px;
