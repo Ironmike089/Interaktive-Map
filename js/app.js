@@ -794,6 +794,25 @@ function deleteInfosheet(doctorId) {
   saveInfosheets(sheets);
 }
 
+// "Infosheet erstellen" legt sofort ein Infosheet an (Steckbrief aus den
+// AOK-Basisdaten ist damit direkt in der Infothek als PDF vorhanden) statt
+// erst ein leeres Formular zu zeigen. Die recherchierten Zusatzfelder
+// (Trigger, Aufhänger, ...) kommen danach über "Bearbeiten" dazu.
+function createInfosheet(d) {
+  const today = new Date().toLocaleDateString("de-DE");
+  saveInfosheet(d.id, {
+    createdBy: currentUser || "Unbekannt",
+    createdAt: today,
+    updatedAt: today,
+    trigger: "",
+    verkauft: "",
+    firmografie: "",
+    struktur: "",
+    produkt: "",
+    aufhaenger: [],
+  });
+}
+
 let infothekExpandedFor = null;
 
 function slugifyFilename(text) {
@@ -1679,7 +1698,11 @@ document.addEventListener("click", (e) => {
     infothekExpandedFor = willOpen ? infothekToggle.dataset.id : null;
   }
   const createBtn = e.target.closest(".infosheet-create-btn");
-  if (createBtn && currentPopupDoctor) openInfosheetEditor(currentPopupDoctor);
+  if (createBtn && currentPopupDoctor) {
+    createInfosheet(currentPopupDoctor);
+    infothekExpandedFor = currentPopupDoctor.id;
+    refreshOpenPopup();
+  }
   const editBtn = e.target.closest(".infosheet-edit-btn");
   if (editBtn && currentPopupDoctor) openInfosheetEditor(currentPopupDoctor);
   const deleteBtn = e.target.closest(".infosheet-delete-btn");
