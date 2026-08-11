@@ -1181,8 +1181,18 @@ function buildOutreachMailto(d) {
   return `mailto:${d.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
+let popupCollapsed = false;
+let popupCollapsedForId = null;
+
 function openDoctorPopup(d, coords) {
   const kategorie = d.kategorie || "sonstige";
+  // Neue Praxis -> Popup startet immer aufgeklappt; nur ein Refresh
+  // derselben Praxis (z.B. nach Infosheet-Recherche) behält den
+  // Klappzustand bei.
+  if (popupCollapsedForId !== d.id) {
+    popupCollapsed = false;
+    popupCollapsedForId = d.id;
+  }
   // Nur die Info berechnen (keine Kartenänderung) — das tatsächliche Zeichnen
   // passiert erst NACH addTo(), siehe unten: MapLibre entfernt beim
   // Wiederverwenden desselben Popup-Objekts intern kurz das alte (feuert
@@ -1190,27 +1200,32 @@ function openDoctorPopup(d, coords) {
   // wieder zurücksetzen würde.
   const conn = getConnectedDoctors(d);
   const html = `
-    <div class="popup-title">${escapeHtml(d.name)}</div>
-    <div class="popup-sub">
-      <span class="dot" style="background:${KATEGORIE_COLORS[kategorie]}"></span>
-      ${escapeHtml(KATEGORIE_LABELS[kategorie])} · ${escapeHtml(d.fachrichtung)} · ${escapeHtml(d.stadt)}
+    <div class="popup-header-row">
+      <div class="popup-title">${escapeHtml(d.name)}</div>
+      <button type="button" class="popup-collapse-btn" title="Ein-/Ausklappen">${popupCollapsed ? "▾" : "▴"}</button>
     </div>
-    ${d.einrichtung ? `<div class="popup-row">🏥 ${escapeHtml(d.einrichtung)}${d.kette ? ` <span style="color:var(--text-dim)">(${escapeHtml(d.kette)})</span>` : ""}</div>` : ""}
-    ${conn.total > 0 ? `<div class="popup-row connections-row">🔗 ${conn.total.toLocaleString("de-DE")} weitere Standorte der Kette ${escapeHtml(d.kette)} auf der Karte hervorgehoben${conn.total > conn.items.length ? ` (${conn.items.length} angezeigt)` : ""}</div>` : ""}
-    ${sizeGaugeHtml(d.groesse)}
-    ${earningsRowHtml(d)}
-    <div class="popup-row">📍 ${escapeHtml(d.strasse)}, ${escapeHtml(d.plz)} ${escapeHtml(d.stadt)}</div>
-    ${d.ansprechpartner && d.ansprechpartner !== d.name ? `<div class="popup-row">👤 ${escapeHtml(d.ansprechpartner)}</div>` : ""}
-    ${d.telefon ? `<div class="popup-row">📞 ${escapeHtml(d.telefon)}</div>` : ""}
-    ${d.email ? `<div class="popup-row">✉️ ${escapeHtml(d.email)}</div>` : ""}
-    ${d.website ? `<div class="popup-row">🔗 <a href="${escapeHtml(d.website)}" target="_blank" rel="noopener">${escapeHtml(d.website.replace(/^https?:\/\//, ""))}</a></div>` : ""}
-    ${d.notizen ? `<div class="popup-row" style="color:var(--text-dim)">📝 ${escapeHtml(d.notizen)}</div>` : ""}
-    <div class="popup-actions">
-      ${d.telefon ? `<a href="tel:${escapeHtml(d.telefon)}">Anrufen</a>` : ""}
-      ${d.email ? `<a href="${escapeHtml(buildOutreachMailto(d))}">E-Mail</a>` : ""}
-      <button type="button" class="popup-route-btn">Route</button>
+    <div class="popup-collapsible" ${popupCollapsed ? "hidden" : ""}>
+      <div class="popup-sub">
+        <span class="dot" style="background:${KATEGORIE_COLORS[kategorie]}"></span>
+        ${escapeHtml(KATEGORIE_LABELS[kategorie])} · ${escapeHtml(d.fachrichtung)} · ${escapeHtml(d.stadt)}
+      </div>
+      ${d.einrichtung ? `<div class="popup-row">🏥 ${escapeHtml(d.einrichtung)}${d.kette ? ` <span style="color:var(--text-dim)">(${escapeHtml(d.kette)})</span>` : ""}</div>` : ""}
+      ${conn.total > 0 ? `<div class="popup-row connections-row">🔗 ${conn.total.toLocaleString("de-DE")} weitere Standorte der Kette ${escapeHtml(d.kette)} auf der Karte hervorgehoben${conn.total > conn.items.length ? ` (${conn.items.length} angezeigt)` : ""}</div>` : ""}
+      ${sizeGaugeHtml(d.groesse)}
+      ${earningsRowHtml(d)}
+      <div class="popup-row">📍 ${escapeHtml(d.strasse)}, ${escapeHtml(d.plz)} ${escapeHtml(d.stadt)}</div>
+      ${d.ansprechpartner && d.ansprechpartner !== d.name ? `<div class="popup-row">👤 ${escapeHtml(d.ansprechpartner)}</div>` : ""}
+      ${d.telefon ? `<div class="popup-row">📞 ${escapeHtml(d.telefon)}</div>` : ""}
+      ${d.email ? `<div class="popup-row">✉️ ${escapeHtml(d.email)}</div>` : ""}
+      ${d.website ? `<div class="popup-row">🔗 <a href="${escapeHtml(d.website)}" target="_blank" rel="noopener">${escapeHtml(d.website.replace(/^https?:\/\//, ""))}</a></div>` : ""}
+      ${d.notizen ? `<div class="popup-row" style="color:var(--text-dim)">📝 ${escapeHtml(d.notizen)}</div>` : ""}
+      <div class="popup-actions">
+        ${d.telefon ? `<a href="tel:${escapeHtml(d.telefon)}">Anrufen</a>` : ""}
+        ${d.email ? `<a href="${escapeHtml(buildOutreachMailto(d))}">E-Mail</a>` : ""}
+        <button type="button" class="popup-route-btn">Route</button>
+      </div>
+      ${infothekHtml(d)}
     </div>
-    ${infothekHtml(d)}
   `;
   popup.setLngLat(coords).setHTML(html).addTo(map);
   currentPopupDoctor = d;
@@ -1774,6 +1789,12 @@ document.addEventListener("click", (e) => {
   if (e.target.closest(".popup-route-btn") && currentPopupDoctor) {
     openRoutePlanner(currentPopupDoctor);
   }
+  const collapseBtn = e.target.closest(".popup-collapse-btn");
+  if (collapseBtn && currentPopupDoctor) {
+    popupCollapsed = !popupCollapsed;
+    popupCollapsedForId = currentPopupDoctor.id;
+    refreshOpenPopup();
+  }
   const infothekToggle = e.target.closest(".infothek-toggle");
   if (infothekToggle) {
     const body = infothekToggle.parentElement.querySelector(".infothek-body");
@@ -1867,9 +1888,61 @@ function logoutUser() {
   updateUserBadge();
 }
 
+// Profilbild je Account: als kleines, quadratisch zugeschnittenes JPEG
+// (Data-URL) in localStorage, damit es im Vergleich (Rankings) neben dem
+// Namen erscheinen kann — ohne Upload auf einen Server.
+function avatarKey(user) {
+  return `medipulse_avatar_${user}`;
+}
+function getAvatar(user) {
+  return localStorage.getItem(avatarKey(user));
+}
+function setAvatar(user, dataUrl) {
+  localStorage.setItem(avatarKey(user), dataUrl);
+}
+
+function resizeImageFile(file, size) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width - side) / 2;
+        const sy = (img.height - side) / 2;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        canvas.getContext("2d").drawImage(img, sx, sy, side, side, 0, 0, size, size);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = () => reject(new Error("Bild konnte nicht geladen werden."));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error("Datei konnte nicht gelesen werden."));
+    reader.readAsDataURL(file);
+  });
+}
+
 function updateUserBadge() {
   const label = document.getElementById("user-badge-label");
   label.textContent = currentUser || "Anmelden";
+  const badge = document.getElementById("user-badge");
+  const iconEl = document.getElementById("user-badge-icon");
+  const avatar = currentUser ? getAvatar(currentUser) : null;
+  let img = badge.querySelector(".user-badge-avatar");
+  if (avatar) {
+    iconEl.hidden = true;
+    if (!img) {
+      img = document.createElement("img");
+      img.className = "user-badge-avatar";
+      badge.insertBefore(img, iconEl);
+    }
+    img.src = avatar;
+  } else {
+    iconEl.hidden = false;
+    if (img) img.remove();
+  }
   renderAuthPanel();
   if (!document.getElementById("sales-stats-panel").hidden) renderSalesStatsPanel();
 }
@@ -1890,6 +1963,8 @@ function renderAuthPanel() {
     formWrap.hidden = true;
     title.textContent = "Konto";
     document.getElementById("auth-current-name-label").textContent = currentUser;
+    const avatar = getAvatar(currentUser);
+    document.getElementById("auth-avatar-preview").innerHTML = avatar ? `<img src="${avatar}" alt="">` : "👤";
   } else {
     loggedInBox.hidden = true;
     formWrap.hidden = false;
@@ -1909,6 +1984,21 @@ document.getElementById("user-badge").addEventListener("click", () => {
 });
 document.getElementById("auth-close").addEventListener("click", () => {
   document.getElementById("auth-panel").hidden = true;
+});
+document.getElementById("auth-avatar-btn").addEventListener("click", () => {
+  document.getElementById("auth-avatar-input").click();
+});
+document.getElementById("auth-avatar-input").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file || !currentUser) return;
+  try {
+    const dataUrl = await resizeImageFile(file, 96);
+    setAvatar(currentUser, dataUrl);
+    updateUserBadge();
+  } catch (err) {
+    console.warn("Profilbild konnte nicht gesetzt werden:", err);
+  }
 });
 document.getElementById("auth-switch-mode").addEventListener("click", () => {
   authMode = authMode === "login" ? "register" : "login";
@@ -2226,6 +2316,85 @@ function renderStatsChart(history) {
   });
 }
 
+// Vergleicht alle auf diesem Gerät registrierten Konten für den gewählten
+// Zeitraum/Metrik (dieselben Tabs wie bei "Meine Statistik"). Da Konten
+// nur lokal in diesem Browser existieren, zeigt das Ranking nur dann
+// mehrere Personen, wenn mehrere Kolleg:innen dasselbe Gerät nutzen —
+// bei je eigenem Laptop sieht jede:r vorerst nur sich selbst.
+function renderRankingsView(body) {
+  const users = loadUsers().map((u) => u.name);
+  const buckets = buildBuckets(statsRange, 0);
+  const totals = users
+    .map((user) => {
+      const stats = loadStats(user);
+      const total = buckets.reduce((sum, b) => sum + bucketValue(stats.history, b, statsMetric), 0);
+      return { user, total };
+    })
+    .sort((a, b) => b.total - a.total);
+
+  const rangeTabs = STAT_RANGES.map(
+    (r) => `<button type="button" class="stat-tab ${statsRange === r.key ? "active" : ""}" data-range="${r.key}">${r.label}</button>`
+  ).join("");
+  const metricTabs = [{ key: "total", emoji: "📊", label: "Gesamt" }, ...STAT_CATEGORIES]
+    .map(
+      (m) =>
+        `<button type="button" class="stat-tab stat-tab-metric ${statsMetric === m.key ? "active" : ""}" data-metric="${m.key}" title="${escapeHtml(m.label)}">${m.emoji}</button>`
+    )
+    .join("");
+
+  const max = Math.max(1, ...totals.map((t) => t.total));
+  const rows = totals
+    .map((t, i) => {
+      const pct = Math.round((t.total / max) * 100);
+      const isLeader = i === 0 && t.total > 0;
+      const avatar = getAvatar(t.user);
+      return `
+      <div class="ranking-row ${t.user === currentUser ? "ranking-row-me" : ""}">
+        <div class="ranking-rank">${i + 1}.</div>
+        <div class="ranking-avatar">${avatar ? `<img src="${escapeHtml(avatar)}" alt="">` : "👤"}</div>
+        <div class="ranking-info">
+          <div class="ranking-name">${escapeHtml(t.user)}</div>
+          <div class="ranking-bar-track">
+            ${isLeader ? '<span class="ranking-crown">👑</span>' : ""}
+            <div class="ranking-bar-fill ${isLeader ? "leader" : ""}" data-pct="${pct}"></div>
+          </div>
+        </div>
+        <div class="ranking-value">${t.total.toLocaleString("de-DE")}</div>
+      </div>`;
+    })
+    .join("");
+
+  body.innerHTML = `
+    <div class="stat-tabs-row">${rangeTabs}</div>
+    <div class="stat-tabs-row stat-tabs-row-metric">${metricTabs}</div>
+    <div class="ranking-sub">${STAT_RANGE_HINT[statsRange]}</div>
+    <div class="ranking-list">${rows || '<div class="infothek-empty">Noch keine registrierten Nutzer:innen.</div>'}</div>
+  `;
+
+  body.querySelectorAll("[data-range]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (statsRange === btn.dataset.range) return;
+      statsRange = btn.dataset.range;
+      renderSalesStatsPanel();
+    });
+  });
+  body.querySelectorAll("[data-metric]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (statsMetric === btn.dataset.metric) return;
+      statsMetric = btn.dataset.metric;
+      renderSalesStatsPanel();
+    });
+  });
+
+  requestAnimationFrame(() => {
+    body.querySelectorAll(".ranking-bar-fill").forEach((el, i) => {
+      setTimeout(() => {
+        el.style.width = el.dataset.pct + "%";
+      }, i * 80);
+    });
+  });
+}
+
 function renderSalesStatsPanel() {
   document.querySelectorAll(".stats-view-tab").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.view === statsView);
@@ -2242,12 +2411,7 @@ function renderSalesStatsPanel() {
   body.hidden = false;
 
   if (statsView === "rankings") {
-    body.innerHTML = `
-      <div class="stats-rankings-placeholder">
-        <span class="stats-rankings-emoji">🏆</span>
-        Rankings kommen bald!<br>
-        Hier kannst du dich dann mit deinen Kolleg:innen vergleichen.
-      </div>`;
+    renderRankingsView(body);
     return;
   }
 

@@ -24,7 +24,7 @@
     </div>
 
     <img src="assets/medipulse-logo.png" alt="Medipulse" class="topbar-logo" id="topbar-logo" onerror="this.style.display='none'">
-    <button id="user-badge" class="icon-btn user-badge-btn" title="Anmelden">👤 <span id="user-badge-label">Anmelden</span></button>
+    <button id="user-badge" class="icon-btn user-badge-btn" title="Anmelden"><span id="user-badge-icon">👤</span> <span id="user-badge-label">Anmelden</span></button>
     <button id="sales-stats-toggle" class="icon-btn" title="Meine Statistik">📊</button>
     <button id="settings-toggle" class="icon-btn" title="Einstellungen">⚙️</button>
   </header>
@@ -36,6 +36,11 @@
     </div>
 
     <div id="auth-logged-in" hidden>
+      <div class="auth-avatar-row">
+        <div class="auth-avatar-preview" id="auth-avatar-preview">👤</div>
+        <button type="button" id="auth-avatar-btn" class="auth-switch-btn">Profilbild ändern</button>
+        <input type="file" id="auth-avatar-input" accept="image/*" hidden>
+      </div>
       <div class="auth-current-name">Angemeldet als <strong id="auth-current-name-label"></strong></div>
       <button type="button" id="auth-logout" class="auth-submit-btn">Abmelden</button>
     </div>

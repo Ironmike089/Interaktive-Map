@@ -209,6 +209,14 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
   border-radius: 8px; padding: 7px 9px; font-size: 12px; margin-bottom: 8px; font-family: "Karla", sans-serif;
 }
 .auth-current-name { font-size: 13px; margin-bottom: 10px; font-family: "Karla", sans-serif; }
+.auth-avatar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.auth-avatar-preview {
+  width: 44px; height: 44px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--border-solid);
+  display: flex; align-items: center; justify-content: center; font-size: 20px; overflow: hidden; flex-shrink: 0;
+}
+.auth-avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
+.auth-avatar-row .auth-switch-btn { width: auto; text-align: left; padding: 0; }
+.user-badge-avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
 .auth-hint { font-size: 10.5px; color: var(--text-dim); line-height: 1.4; margin-top: 10px; font-family: "Karla", sans-serif; }
 
 #sales-stats-panel { width: 340px; max-height: 82vh; overflow-y: auto; }
@@ -321,11 +329,32 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
 }
 .stats-view-tab:hover { background: var(--accent-soft); }
 .stats-view-tab.active { background: var(--accent); border-color: var(--accent); color: #06201d; }
-.stats-rankings-placeholder {
-  text-align: center; padding: 32px 10px; color: var(--text-dim); font-size: 12.5px; line-height: 1.6;
+.ranking-sub { font-size: 11.5px; color: var(--text-dim); margin: 8px 0 10px; font-family: "Karla", sans-serif; }
+.ranking-list { display: flex; flex-direction: column; gap: 10px; }
+.ranking-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; }
+.ranking-row-me { background: var(--surface-2); }
+.ranking-rank { width: 18px; flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--text-dim); text-align: right; }
+.ranking-avatar {
+  width: 28px; height: 28px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--border-solid);
+  display: flex; align-items: center; justify-content: center; font-size: 14px; overflow: hidden; flex-shrink: 0;
+}
+.ranking-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.ranking-info { flex: 1; min-width: 0; }
+.ranking-name {
+  font-size: 12.5px; font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-family: "Karla", sans-serif;
 }
-.stats-rankings-placeholder .stats-rankings-emoji { font-size: 40px; display: block; margin-bottom: 10px; }
+.ranking-bar-track { position: relative; height: 8px; border-radius: 4px; background: var(--surface-2); overflow: visible; }
+.ranking-bar-fill {
+  height: 100%; width: 0%; border-radius: 4px; background: var(--accent);
+  transition: width 0.6s cubic-bezier(0.22, 1.3, 0.4, 1);
+}
+.ranking-bar-fill.leader { background: linear-gradient(90deg, #f5d020, #f5a623); }
+.ranking-crown { position: absolute; top: -15px; right: -2px; font-size: 13px; animation: flame-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.ranking-value {
+  flex-shrink: 0; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 30px; text-align: right;
+  font-family: "IBM Plex Mono", monospace;
+}
 
 .note-editor-body { display: flex; flex-direction: column; gap: 10px; margin-top: 2px; }
 .note-editor-textarea {
@@ -557,12 +586,18 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
   border: 1px solid var(--border-solid); background: transparent; color: var(--text-dim); cursor: pointer; font-size: 15px;
 }
 .detail-close:hover { background: var(--surface-2); }
+.detail-collapse-btn {
+  position: absolute; top: 12px; right: 44px; width: 26px; height: 26px; border-radius: 8px;
+  border: 1px solid var(--border-solid); background: transparent; color: var(--text-dim); cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.detail-collapse-btn:hover { background: var(--surface-2); }
 .detail-status {
   display: inline-flex; align-items: center; gap: 6px; font-family: "IBM Plex Mono", monospace;
   font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 9px; border-radius: 999px;
   background: var(--surface-2); margin-bottom: 10px;
 }
-.detail-card h2 { font-size: 17px; margin-bottom: 3px; padding-right: 24px; }
+.detail-card h2 { font-size: 17px; margin-bottom: 3px; padding-right: 56px; }
 .detail-sub { font-size: 12.5px; color: var(--text-dim); margin-bottom: 14px; }
 .size-row { margin: 0 0 14px; }
 .size-label { font-size: 11.5px; color: var(--text-dim); margin-bottom: 6px; }
@@ -694,7 +729,7 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
       <div class="stat s-lead"><span class="stat-n mono" id="n-lead">0</span><span class="stat-l">Leads</span></div>
     </div>
     <img src="data:image/png;base64,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" alt="Medipulse" class="topbar-logo" id="topbar-logo" onerror="this.style.display='none'">
-    <button id="user-badge" class="ghost-btn user-badge-btn" aria-label="Anmelden" type="button">👤 <span id="user-badge-label">Anmelden</span></button>
+    <button id="user-badge" class="ghost-btn user-badge-btn" aria-label="Anmelden" type="button"><span id="user-badge-icon">👤</span> <span id="user-badge-label">Anmelden</span></button>
     <button id="sales-stats-toggle" class="ghost-btn" aria-label="Meine Statistik" type="button">📊</button>
     <button id="settings-toggle" class="ghost-btn" aria-label="Einstellungen" type="button">⚙</button>
     <button id="panel-toggle" class="ghost-btn" aria-label="Liste ein-/ausblenden" type="button">☰</button>
@@ -708,6 +743,11 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
 
     <div id="auth-logged-in" hidden>
       <div class="auth-current-name">Angemeldet als <strong id="auth-current-name-label"></strong></div>
+      <div class="auth-avatar-row">
+        <div class="auth-avatar-preview" id="auth-avatar-preview">👤</div>
+        <button type="button" id="auth-avatar-btn" class="auth-switch-btn">Profilbild ändern</button>
+        <input type="file" id="auth-avatar-input" accept="image/*" hidden>
+      </div>
       <button type="button" id="auth-logout" class="auth-submit-btn">Abmelden</button>
     </div>
 
@@ -852,22 +892,25 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
 
   <div class="detail-card" id="detail" hidden>
     <button class="detail-close" id="detail-close" aria-label="Schließen" type="button">×</button>
-    <div class="detail-status mono" id="d-status"></div>
+    <button class="detail-collapse-btn" id="detail-collapse-btn" aria-label="Ein-/Ausklappen" type="button">▴</button>
     <h2 id="d-name"></h2>
-    <div class="detail-sub" id="d-sub"></div>
-    <div id="d-groesse-row" class="size-row">
-      <div class="size-label" id="d-groesse-label"></div>
-      <div class="size-bar"><div class="size-arrow" id="d-groesse-arrow"></div></div>
+    <div id="detail-collapsible">
+      <div class="detail-status mono" id="d-status"></div>
+      <div class="detail-sub" id="d-sub"></div>
+      <div id="d-groesse-row" class="size-row">
+        <div class="size-label" id="d-groesse-label"></div>
+        <div class="size-bar"><div class="size-arrow" id="d-groesse-arrow"></div></div>
+      </div>
+      <div class="earnings-row" id="d-earnings"></div>
+      <div class="connections-row" id="d-connections" hidden></div>
+      <dl class="detail-grid">
+        <div><dt>Adresse</dt><dd id="d-address"></dd></div>
+        <div id="d-contact-row"><dt>Kontakt</dt><dd id="d-contact"></dd></div>
+        <div id="d-notes-row"><dt>Notiz</dt><dd id="d-notes"></dd></div>
+      </dl>
+      <div class="detail-actions" id="d-actions"></div>
+      <div class="infothek" id="d-infothek"></div>
     </div>
-    <div class="earnings-row" id="d-earnings"></div>
-    <div class="connections-row" id="d-connections" hidden></div>
-    <dl class="detail-grid">
-      <div><dt>Adresse</dt><dd id="d-address"></dd></div>
-      <div id="d-contact-row"><dt>Kontakt</dt><dd id="d-contact"></dd></div>
-      <div id="d-notes-row"><dt>Notiz</dt><dd id="d-notes"></dd></div>
-    </dl>
-    <div class="detail-actions" id="d-actions"></div>
-    <div class="infothek" id="d-infothek"></div>
   </div>
 </div>
 
@@ -1575,6 +1618,8 @@ let activeBundeslaender = new Set(BUNDESLAND_LIST);
 let searchTerm = "";
 let selectedId = null;
 let currentDetailDoctor = null;
+let detailCollapsed = false;
+let detailCollapsedForId = null;
 let gewinnProArzt = Number(localStorage.getItem("medipulse_gpa")) || 50;
 let minGroesse = 0;
 let maxGroesseInData = 1;
@@ -2137,6 +2182,15 @@ function buildOutreachMailto(d) {
 function showDetail(d) {
   currentDetailDoctor = d;
   document.getElementById("detail").hidden = false;
+  // Neue Praxis -> Karte startet immer aufgeklappt; nur ein Refresh
+  // derselben Praxis (z.B. nach Infosheet-Recherche) behält den
+  // Klappzustand bei.
+  if (detailCollapsedForId !== d.id) {
+    detailCollapsed = false;
+    detailCollapsedForId = d.id;
+  }
+  document.getElementById("detail-collapsible").hidden = detailCollapsed;
+  document.getElementById("detail-collapse-btn").textContent = detailCollapsed ? "▾" : "▴";
   const kategorie = d.kategorie || "sonstige";
   const statusEl = document.getElementById("d-status");
   statusEl.textContent = `${KATEGORIE_LABEL[kategorie]} · ${STATUS_LABEL[d.status] || d.status}`;
@@ -2194,6 +2248,13 @@ document.getElementById("detail-close").addEventListener("click", () => {
   selectedId = null;
   document.querySelectorAll(".list-item").forEach((li) => li.classList.remove("active"));
   window.__medipulse && window.__medipulse.deselectDoctor();
+});
+document.getElementById("detail-collapse-btn").addEventListener("click", () => {
+  if (!currentDetailDoctor) return;
+  detailCollapsed = !detailCollapsed;
+  detailCollapsedForId = currentDetailDoctor.id;
+  document.getElementById("detail-collapsible").hidden = detailCollapsed;
+  document.getElementById("detail-collapse-btn").textContent = detailCollapsed ? "▾" : "▴";
 });
 
 function closeAllOverlayPanels() {
@@ -2300,9 +2361,58 @@ function logoutUser() {
   updateUserBadge();
 }
 
+function avatarKey(user) {
+  return `medipulse_avatar_${user}`;
+}
+function getAvatar(user) {
+  return localStorage.getItem(avatarKey(user));
+}
+function setAvatar(user, dataUrl) {
+  localStorage.setItem(avatarKey(user), dataUrl);
+}
+
+function resizeImageFile(file, size) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width - side) / 2;
+        const sy = (img.height - side) / 2;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        canvas.getContext("2d").drawImage(img, sx, sy, side, side, 0, 0, size, size);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = () => reject(new Error("Bild konnte nicht geladen werden."));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error("Datei konnte nicht gelesen werden."));
+    reader.readAsDataURL(file);
+  });
+}
+
 function updateUserBadge() {
   const label = document.getElementById("user-badge-label");
   label.textContent = currentUser || "Anmelden";
+  const badge = document.getElementById("user-badge");
+  const iconEl = document.getElementById("user-badge-icon");
+  const avatar = currentUser ? getAvatar(currentUser) : null;
+  let img = badge.querySelector(".user-badge-avatar");
+  if (avatar) {
+    iconEl.hidden = true;
+    if (!img) {
+      img = document.createElement("img");
+      img.className = "user-badge-avatar";
+      badge.insertBefore(img, iconEl);
+    }
+    img.src = avatar;
+  } else {
+    iconEl.hidden = false;
+    if (img) img.remove();
+  }
   renderAuthPanel();
   if (!document.getElementById("sales-stats-panel").hidden) renderSalesStatsPanel();
 }
@@ -2317,6 +2427,8 @@ function renderAuthPanel() {
     formWrap.hidden = true;
     title.textContent = "Konto";
     document.getElementById("auth-current-name-label").textContent = currentUser;
+    const avatar = getAvatar(currentUser);
+    document.getElementById("auth-avatar-preview").innerHTML = avatar ? `<img src="${avatar}" alt="">` : "👤";
   } else {
     loggedInBox.hidden = true;
     formWrap.hidden = false;
@@ -2336,6 +2448,21 @@ document.getElementById("user-badge").addEventListener("click", () => {
 });
 document.getElementById("auth-close").addEventListener("click", () => {
   document.getElementById("auth-panel").hidden = true;
+});
+document.getElementById("auth-avatar-btn").addEventListener("click", () => {
+  document.getElementById("auth-avatar-input").click();
+});
+document.getElementById("auth-avatar-input").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file || !currentUser) return;
+  try {
+    const dataUrl = await resizeImageFile(file, 96);
+    setAvatar(currentUser, dataUrl);
+    updateUserBadge();
+  } catch (err) {
+    console.warn("Profilbild konnte nicht gesetzt werden:", err);
+  }
 });
 document.getElementById("auth-switch-mode").addEventListener("click", () => {
   authMode = authMode === "login" ? "register" : "login";
@@ -2652,6 +2779,85 @@ function renderStatsChart(history) {
   });
 }
 
+// Vergleicht alle auf diesem Gerät registrierten Konten für den gewählten
+// Zeitraum/Metrik (dieselben Tabs wie bei "Meine Statistik"). Da Konten
+// nur lokal in diesem Browser existieren, zeigt das Ranking nur dann
+// mehrere Personen, wenn mehrere Kolleg:innen dasselbe Gerät nutzen —
+// bei je eigenem Laptop sieht jede:r vorerst nur sich selbst.
+function renderRankingsView(body) {
+  const users = loadUsers().map((u) => u.name);
+  const buckets = buildBuckets(statsRange, 0);
+  const totals = users
+    .map((user) => {
+      const stats = loadStats(user);
+      const total = buckets.reduce((sum, b) => sum + bucketValue(stats.history, b, statsMetric), 0);
+      return { user, total };
+    })
+    .sort((a, b) => b.total - a.total);
+
+  const rangeTabs = STAT_RANGES.map(
+    (r) => `<button type="button" class="stat-tab ${statsRange === r.key ? "active" : ""}" data-range="${r.key}">${r.label}</button>`
+  ).join("");
+  const metricTabs = [{ key: "total", emoji: "📊", label: "Gesamt" }, ...STAT_CATEGORIES]
+    .map(
+      (m) =>
+        `<button type="button" class="stat-tab stat-tab-metric ${statsMetric === m.key ? "active" : ""}" data-metric="${m.key}" title="${esc(m.label)}">${m.emoji}</button>`
+    )
+    .join("");
+
+  const max = Math.max(1, ...totals.map((t) => t.total));
+  const rows = totals
+    .map((t, i) => {
+      const pct = Math.round((t.total / max) * 100);
+      const isLeader = i === 0 && t.total > 0;
+      const avatar = getAvatar(t.user);
+      return `
+      <div class="ranking-row ${t.user === currentUser ? "ranking-row-me" : ""}">
+        <div class="ranking-rank">${i + 1}.</div>
+        <div class="ranking-avatar">${avatar ? `<img src="${esc(avatar)}" alt="">` : "👤"}</div>
+        <div class="ranking-info">
+          <div class="ranking-name">${esc(t.user)}</div>
+          <div class="ranking-bar-track">
+            ${isLeader ? '<span class="ranking-crown">👑</span>' : ""}
+            <div class="ranking-bar-fill ${isLeader ? "leader" : ""}" data-pct="${pct}"></div>
+          </div>
+        </div>
+        <div class="ranking-value">${t.total.toLocaleString("de-DE")}</div>
+      </div>`;
+    })
+    .join("");
+
+  body.innerHTML = `
+    <div class="stat-tabs-row">${rangeTabs}</div>
+    <div class="stat-tabs-row stat-tabs-row-metric">${metricTabs}</div>
+    <div class="ranking-sub">${STAT_RANGE_HINT[statsRange]}</div>
+    <div class="ranking-list">${rows || '<div class="infothek-empty">Noch keine registrierten Nutzer:innen.</div>'}</div>
+  `;
+
+  body.querySelectorAll("[data-range]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (statsRange === btn.dataset.range) return;
+      statsRange = btn.dataset.range;
+      renderSalesStatsPanel();
+    });
+  });
+  body.querySelectorAll("[data-metric]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (statsMetric === btn.dataset.metric) return;
+      statsMetric = btn.dataset.metric;
+      renderSalesStatsPanel();
+    });
+  });
+
+  requestAnimationFrame(() => {
+    body.querySelectorAll(".ranking-bar-fill").forEach((el, i) => {
+      setTimeout(() => {
+        el.style.width = el.dataset.pct + "%";
+      }, i * 80);
+    });
+  });
+}
+
 function renderSalesStatsPanel() {
   document.querySelectorAll(".stats-view-tab").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.view === statsView);
@@ -2668,12 +2874,7 @@ function renderSalesStatsPanel() {
   body.hidden = false;
 
   if (statsView === "rankings") {
-    body.innerHTML = `
-      <div class="stats-rankings-placeholder">
-        <span class="stats-rankings-emoji">🏆</span>
-        Rankings kommen bald!<br>
-        Hier kannst du dich dann mit deinen Kolleg:innen vergleichen.
-      </div>`;
+    renderRankingsView(body);
     return;
   }
 
