@@ -960,6 +960,50 @@ function infothekHtml(d) {
     </div>`;
 }
 
+// --- Automatisierte Erstansprache-E-Mail ---
+// Holt sich die 1-2 "Issues" für die Praxis aus dem Infosheet (Trigger +
+// Aufhänger-Thesen), falls eins existiert. Name oben (Anrede) und unten
+// (Unterschrift) bleiben bewusst Platzhalter: die Anrede könnte sonst das
+// falsche Geschlecht/Titel treffen (unsere Daten enthalten keine
+// verlässliche Anrede-Information), und wer die Mail tatsächlich
+// verschickt, soll die App nicht raten.
+function emailIssuePoints(d) {
+  const sheet = getInfosheet(d.id);
+  if (!sheet) return [];
+  const points = [];
+  if (sheet.trigger) points.push(sheet.trigger);
+  (sheet.aufhaenger || []).filter((t) => t && t.trim()).forEach((t) => points.push(t));
+  return points.slice(0, 2);
+}
+
+function buildOutreachEmail(d) {
+  const orgLabel = d.einrichtung || d.name;
+  const points = emailIssuePoints(d);
+  const pointsBlock = points.length
+    ? points.map((p, i) => `${i + 1}. ${p}`).join("\n")
+    : "[Hier 1-2 Punkte aus der Infothek einfügen]";
+  const subject = `Kurze Einschätzung zu ${orgLabel}`;
+  const body = [
+    "Guten Tag [Name],",
+    "",
+    `wir haben uns ${orgLabel} öffentlich angeschaut und ${points.length > 1 ? "ein paar Vermutungen" : "eine Vermutung"} notiert, wie sich das aktuell auf Ihre Praxis auswirken könnte:`,
+    "",
+    pointsBlock,
+    "",
+    `Lag ich damit daneben? Über eine kurze Rückmeldung freue ich mich, auch wenn die Antwort "passt nicht" ist.`,
+    "",
+    "Viele Grüße",
+    "[Ihr Name]",
+    "MediPulse",
+  ].join("\n");
+  return { subject, body };
+}
+
+function buildOutreachMailto(d) {
+  const { subject, body } = buildOutreachEmail(d);
+  return `mailto:${d.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
 function openDoctorPopup(d, coords) {
   const kategorie = d.kategorie || "sonstige";
   // Nur die Info berechnen (keine Kartenänderung) — das tatsächliche Zeichnen
@@ -986,7 +1030,7 @@ function openDoctorPopup(d, coords) {
     ${d.notizen ? `<div class="popup-row" style="color:var(--text-dim)">📝 ${escapeHtml(d.notizen)}</div>` : ""}
     <div class="popup-actions">
       ${d.telefon ? `<a href="tel:${escapeHtml(d.telefon)}">Anrufen</a>` : ""}
-      ${d.email ? `<a href="mailto:${escapeHtml(d.email)}">E-Mail</a>` : ""}
+      ${d.email ? `<a href="${escapeHtml(buildOutreachMailto(d))}">E-Mail</a>` : ""}
       <button type="button" class="popup-route-btn">Route</button>
     </div>
     ${infothekHtml(d)}
