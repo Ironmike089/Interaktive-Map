@@ -231,6 +231,38 @@
     </div>
   </div>
 
+  <div class="route-planner-backdrop" id="infosheet-editor-backdrop" hidden>
+    <div class="route-planner infosheet-editor" id="infosheet-editor">
+      <div class="route-planner-header">
+        <span id="infosheet-editor-title">Infosheet</span>
+        <button id="infosheet-editor-close" class="icon-btn" title="Abbrechen">×</button>
+      </div>
+      <div class="infosheet-editor-body">
+        <label class="infosheet-field-label" for="infosheet-trigger">Trigger</label>
+        <textarea id="infosheet-trigger" class="note-editor-textarea infosheet-textarea" placeholder="Was macht das Thema für die Praxis gerade jetzt relevant? (z.B. gesetzliche Änderung)"></textarea>
+
+        <label class="infosheet-field-label" for="infosheet-verkauft">Was die Praxis verkauft</label>
+        <textarea id="infosheet-verkauft" class="note-editor-textarea infosheet-textarea" placeholder="Kurzbeschreibung der Praxis/des MVZ"></textarea>
+
+        <label class="infosheet-field-label" for="infosheet-firmografie">Firmografie</label>
+        <textarea id="infosheet-firmografie" class="note-editor-textarea infosheet-textarea" placeholder="Rechtsträger, Adresse, Ansprechpartner, USt-ID…"></textarea>
+
+        <label class="infosheet-field-label" for="infosheet-struktur">Struktur</label>
+        <textarea id="infosheet-struktur" class="note-editor-textarea infosheet-textarea" placeholder="Team, Ärzt:innen, Verwaltung…"></textarea>
+
+        <label class="infosheet-field-label" for="infosheet-produkt">Produkt</label>
+        <textarea id="infosheet-produkt" class="note-editor-textarea infosheet-textarea" placeholder="Leistungen, Statistiken, Besonderheiten…"></textarea>
+
+        <label class="infosheet-field-label">Der Aufhänger — bis zu 3 Thesen</label>
+        <input type="text" id="infosheet-these-1" class="auth-input" placeholder="These 1" maxlength="200" />
+        <input type="text" id="infosheet-these-2" class="auth-input" placeholder="These 2" maxlength="200" />
+        <input type="text" id="infosheet-these-3" class="auth-input" placeholder="These 3" maxlength="200" />
+
+        <button type="button" id="infosheet-editor-save" class="auth-submit-btn">Speichern</button>
+      </div>
+    </div>
+  </div>
+
   <script src="vendor/maplibre-gl/maplibre-gl.js"></script>
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>

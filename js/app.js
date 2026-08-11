@@ -767,6 +767,77 @@ function earningsRowHtml(d) {
   return `<div class="popup-row earnings-row">💰 ${total.toLocaleString("de-DE")} € möglicher Umsatz</div>`;
 }
 
+// --- Infosheet je Praxis (lokal auf diesem Gerät, geräteweit geteilt —
+// im Gegensatz zur Statistik nicht an einen Account gebunden, da die
+// Infothek für das ganze Team zur selben Praxis gehören soll). ---
+function loadInfosheets() {
+  try {
+    return JSON.parse(localStorage.getItem("medipulse_infosheets") || "{}");
+  } catch {
+    return {};
+  }
+}
+function saveInfosheets(sheets) {
+  localStorage.setItem("medipulse_infosheets", JSON.stringify(sheets));
+}
+function getInfosheet(doctorId) {
+  return loadInfosheets()[doctorId] || null;
+}
+function saveInfosheet(doctorId, sheet) {
+  const sheets = loadInfosheets();
+  sheets[doctorId] = sheet;
+  saveInfosheets(sheets);
+}
+function deleteInfosheet(doctorId) {
+  const sheets = loadInfosheets();
+  delete sheets[doctorId];
+  saveInfosheets(sheets);
+}
+
+let infothekExpandedFor = null;
+
+function renderInfosheetContent(sheet) {
+  const rows = [];
+  const section = (label, text) =>
+    text ? `<div class="infosheet-section"><div class="infosheet-label">${escapeHtml(label)}</div><div class="infosheet-text">${escapeHtml(text)}</div></div>` : "";
+  rows.push(section("Trigger", sheet.trigger));
+  rows.push(section("Was die Praxis verkauft", sheet.verkauft));
+  rows.push(section("Firmografie", sheet.firmografie));
+  rows.push(section("Struktur", sheet.struktur));
+  rows.push(section("Produkt", sheet.produkt));
+  const theses = (sheet.aufhaenger || []).filter((t) => t && t.trim());
+  if (theses.length) {
+    rows.push(
+      `<div class="infosheet-section"><div class="infosheet-label">Der Aufhänger</div>${theses
+        .map((t, i) => `<div class="infosheet-thesis">${i + 1}. ${escapeHtml(t)}</div>`)
+        .join("")}</div>`
+    );
+  }
+  const content = rows.filter(Boolean).join("");
+  return content || `<div class="infothek-empty">Infosheet ist noch leer.</div>`;
+}
+
+function infothekHtml(d) {
+  const sheet = getInfosheet(d.id);
+  const expanded = infothekExpandedFor === d.id;
+  const body = sheet
+    ? `
+      ${renderInfosheetContent(sheet)}
+      <div class="infosheet-meta">Erstellt von ${escapeHtml(sheet.createdBy || "Unbekannt")} · zuletzt aktualisiert am ${escapeHtml(sheet.updatedAt || sheet.createdAt || "")}</div>
+      <div class="infosheet-actions">
+        <button type="button" class="infosheet-edit-btn" data-id="${d.id}">Bearbeiten</button>
+        <button type="button" class="infosheet-delete-btn" data-id="${d.id}">Löschen</button>
+      </div>`
+    : `
+      <div class="infothek-empty">Noch kein Infosheet vorhanden.</div>
+      <button type="button" class="infosheet-create-btn" data-id="${d.id}">+ Infosheet erstellen</button>`;
+  return `
+    <div class="infothek">
+      <button type="button" class="infothek-toggle" data-id="${d.id}">📄 Infothek <span class="infothek-chevron">${expanded ? "▴" : "▾"}</span></button>
+      <div class="infothek-body" ${expanded ? "" : "hidden"}>${body}</div>
+    </div>`;
+}
+
 function openDoctorPopup(d, coords) {
   const kategorie = d.kategorie || "sonstige";
   // Nur die Info berechnen (keine Kartenänderung) — das tatsächliche Zeichnen
@@ -796,11 +867,67 @@ function openDoctorPopup(d, coords) {
       ${d.email ? `<a href="mailto:${escapeHtml(d.email)}">E-Mail</a>` : ""}
       <button type="button" class="popup-route-btn">Route</button>
     </div>
+    ${infothekHtml(d)}
   `;
   popup.setLngLat(coords).setHTML(html).addTo(map);
   currentPopupDoctor = d;
   updateConnections(d);
 }
+
+function refreshOpenPopup() {
+  if (currentPopupDoctor) {
+    openDoctorPopup(currentPopupDoctor, popup.getLngLat());
+  }
+}
+
+let infosheetEditingDoctorId = null;
+function openInfosheetEditor(d) {
+  infosheetEditingDoctorId = d.id;
+  const sheet = getInfosheet(d.id) || {};
+  document.getElementById("infosheet-editor-title").textContent = `Infosheet: ${d.name}`;
+  document.getElementById("infosheet-trigger").value = sheet.trigger || "";
+  document.getElementById("infosheet-verkauft").value = sheet.verkauft || "";
+  document.getElementById("infosheet-firmografie").value = sheet.firmografie || "";
+  document.getElementById("infosheet-struktur").value = sheet.struktur || "";
+  document.getElementById("infosheet-produkt").value = sheet.produkt || "";
+  const theses = sheet.aufhaenger || [];
+  document.getElementById("infosheet-these-1").value = theses[0] || "";
+  document.getElementById("infosheet-these-2").value = theses[1] || "";
+  document.getElementById("infosheet-these-3").value = theses[2] || "";
+  document.getElementById("infosheet-editor-backdrop").hidden = false;
+}
+function closeInfosheetEditor() {
+  document.getElementById("infosheet-editor-backdrop").hidden = true;
+  infosheetEditingDoctorId = null;
+}
+document.getElementById("infosheet-editor-close").addEventListener("click", closeInfosheetEditor);
+document.getElementById("infosheet-editor-backdrop").addEventListener("click", (e) => {
+  if (e.target.id === "infosheet-editor-backdrop") closeInfosheetEditor();
+});
+document.getElementById("infosheet-editor-save").addEventListener("click", () => {
+  if (!infosheetEditingDoctorId) return;
+  const existing = getInfosheet(infosheetEditingDoctorId);
+  const today = new Date().toLocaleDateString("de-DE");
+  const sheet = {
+    createdBy: (existing && existing.createdBy) || currentUser || "Unbekannt",
+    createdAt: (existing && existing.createdAt) || today,
+    updatedAt: today,
+    trigger: document.getElementById("infosheet-trigger").value.trim(),
+    verkauft: document.getElementById("infosheet-verkauft").value.trim(),
+    firmografie: document.getElementById("infosheet-firmografie").value.trim(),
+    struktur: document.getElementById("infosheet-struktur").value.trim(),
+    produkt: document.getElementById("infosheet-produkt").value.trim(),
+    aufhaenger: [
+      document.getElementById("infosheet-these-1").value.trim(),
+      document.getElementById("infosheet-these-2").value.trim(),
+      document.getElementById("infosheet-these-3").value.trim(),
+    ],
+  };
+  saveInfosheet(infosheetEditingDoctorId, sheet);
+  infothekExpandedFor = infosheetEditingDoctorId;
+  closeInfosheetEditor();
+  refreshOpenPopup();
+});
 
 popup.on("close", () => {
   currentPopupDoctor = null;
@@ -1042,9 +1169,10 @@ document.addEventListener("click", (e) => {
   // meldet und das Panel sofort wieder schließt. composedPath() bildet
   // den DOM-Pfad zum Zeitpunkt des Klicks ab und bleibt davon unberührt.
   const path = e.composedPath();
-  // Klicks im Notiz-Editor (eigenes Overlay über dem Statistik-Panel)
-  // dürfen das dahinterliegende Panel nicht schließen.
+  // Klicks im Notiz-Editor oder Infosheet-Editor (eigene Overlays über
+  // anderen Panels) dürfen das dahinterliegende Panel nicht schließen.
   if (path.includes(document.getElementById("note-editor-backdrop"))) return;
+  if (path.includes(document.getElementById("infosheet-editor-backdrop"))) return;
   [
     ["settings-panel", "settings-toggle"],
     ["auth-panel", "user-badge"],
@@ -1281,11 +1409,29 @@ document.getElementById("route-picking-done").addEventListener("click", () => {
 });
 document.getElementById("route-planner-close").addEventListener("click", closeRoutePlanner);
 
-// Der "Route"-Button im Popup wird per Event-Delegation behandelt, weil das
-// Popup-HTML bei jedem Öffnen neu erzeugt wird (siehe openDoctorPopup).
+// Buttons im Popup (Route, Infothek) werden per Event-Delegation behandelt,
+// weil das Popup-HTML bei jedem Öffnen neu erzeugt wird (siehe openDoctorPopup).
 document.addEventListener("click", (e) => {
   if (e.target.closest(".popup-route-btn") && currentPopupDoctor) {
     openRoutePlanner(currentPopupDoctor);
+  }
+  const infothekToggle = e.target.closest(".infothek-toggle");
+  if (infothekToggle) {
+    const body = infothekToggle.parentElement.querySelector(".infothek-body");
+    const willOpen = body.hidden;
+    body.hidden = !willOpen;
+    infothekToggle.querySelector(".infothek-chevron").textContent = willOpen ? "▴" : "▾";
+    infothekExpandedFor = willOpen ? infothekToggle.dataset.id : null;
+  }
+  const createBtn = e.target.closest(".infosheet-create-btn");
+  if (createBtn && currentPopupDoctor) openInfosheetEditor(currentPopupDoctor);
+  const editBtn = e.target.closest(".infosheet-edit-btn");
+  if (editBtn && currentPopupDoctor) openInfosheetEditor(currentPopupDoctor);
+  const deleteBtn = e.target.closest(".infosheet-delete-btn");
+  if (deleteBtn && currentPopupDoctor) {
+    deleteInfosheet(currentPopupDoctor.id);
+    infothekExpandedFor = currentPopupDoctor.id;
+    refreshOpenPopup();
   }
 });
 

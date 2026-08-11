@@ -333,6 +333,51 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
   font-family: "Karla", sans-serif; font-size: 13px; resize: vertical;
 }
 
+#infosheet-editor { width: 420px; }
+.infosheet-editor-body {
+  display: flex; flex-direction: column; gap: 6px; max-height: 70vh; overflow-y: auto;
+  padding-right: 4px; margin-top: 2px;
+}
+.infosheet-editor-body .auth-input { margin-bottom: 0; }
+.infosheet-field-label {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim);
+  margin-top: 10px; font-family: "IBM Plex Mono", monospace;
+}
+.infosheet-field-label:first-child { margin-top: 0; }
+.infosheet-textarea { min-height: 56px; }
+
+.infothek { margin-top: 10px; border-top: 1px solid var(--border-solid); padding-top: 8px; }
+.infothek-toggle {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  background: none; border: none; color: var(--text); font-size: 13px; font-weight: 700;
+  cursor: pointer; padding: 2px 0; font-family: "Archivo", sans-serif;
+}
+.infothek-chevron { color: var(--text-dim); }
+.infothek-body { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; }
+.infothek-empty { font-size: 12px; color: var(--text-dim); font-family: "Karla", sans-serif; }
+.infosheet-create-btn {
+  align-self: flex-start; padding: 7px 10px; border-radius: 8px; border: 1px dashed var(--border-solid);
+  background: transparent; color: var(--accent); font-size: 12px; font-weight: 700; cursor: pointer;
+  font-family: "Karla", sans-serif;
+}
+.infosheet-create-btn:hover { background: var(--surface-2); border-style: solid; }
+.infosheet-section { font-size: 12px; font-family: "Karla", sans-serif; }
+.infosheet-label {
+  font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.04em;
+  color: var(--accent); margin-bottom: 2px; font-family: "IBM Plex Mono", monospace;
+}
+.infosheet-text { white-space: pre-wrap; color: var(--text); }
+.infosheet-thesis { margin-top: 2px; }
+.infosheet-meta { font-size: 10px; color: var(--text-dim); font-family: "IBM Plex Mono", monospace; }
+.infosheet-actions { display: flex; gap: 6px; }
+.infosheet-actions button {
+  flex: 1; padding: 6px 8px; border-radius: 7px; font-size: 11.5px; cursor: pointer;
+  border: 1px solid var(--border-solid); background: var(--surface-2); color: var(--text);
+  font-family: "Karla", sans-serif;
+}
+.infosheet-actions button:hover { background: var(--accent-soft); }
+.infosheet-delete-btn:hover { background: rgba(226, 85, 74, 0.15) !important; border-color: #e2554a; color: #e2554a; }
+
 .streak-celebration {
   position: fixed; inset: 0; z-index: 200;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -811,6 +856,7 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
       <div id="d-notes-row"><dt>Notiz</dt><dd id="d-notes"></dd></div>
     </dl>
     <div class="detail-actions" id="d-actions"></div>
+    <div class="infothek" id="d-infothek"></div>
   </div>
 </div>
 
@@ -845,6 +891,38 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
       <input type="text" id="note-editor-title" class="auth-input" placeholder="Überschrift, z.B. Termin bei Dr. Müller" maxlength="60" />
       <textarea id="note-editor-text" class="note-editor-textarea" placeholder="Details (optional)…"></textarea>
       <button type="button" id="note-editor-save" class="auth-submit-btn">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<div class="route-planner-backdrop" id="infosheet-editor-backdrop" hidden>
+  <div class="route-planner infosheet-editor" id="infosheet-editor">
+    <div class="route-planner-header">
+      <span id="infosheet-editor-title">Infosheet</span>
+      <button id="infosheet-editor-close" class="ghost-btn" aria-label="Abbrechen" type="button">×</button>
+    </div>
+    <div class="infosheet-editor-body">
+      <label class="infosheet-field-label" for="infosheet-trigger">Trigger</label>
+      <textarea id="infosheet-trigger" class="note-editor-textarea infosheet-textarea" placeholder="Was macht das Thema für die Praxis gerade jetzt relevant?"></textarea>
+
+      <label class="infosheet-field-label" for="infosheet-verkauft">Was die Praxis verkauft</label>
+      <textarea id="infosheet-verkauft" class="note-editor-textarea infosheet-textarea" placeholder="Kurzbeschreibung der Praxis/des MVZ"></textarea>
+
+      <label class="infosheet-field-label" for="infosheet-firmografie">Firmografie</label>
+      <textarea id="infosheet-firmografie" class="note-editor-textarea infosheet-textarea" placeholder="Rechtsträger, Adresse, Ansprechpartner, USt-ID…"></textarea>
+
+      <label class="infosheet-field-label" for="infosheet-struktur">Struktur</label>
+      <textarea id="infosheet-struktur" class="note-editor-textarea infosheet-textarea" placeholder="Team, Ärzt:innen, Verwaltung…"></textarea>
+
+      <label class="infosheet-field-label" for="infosheet-produkt">Produkt</label>
+      <textarea id="infosheet-produkt" class="note-editor-textarea infosheet-textarea" placeholder="Leistungen, Statistiken, Besonderheiten…"></textarea>
+
+      <label class="infosheet-field-label">Der Aufhänger — bis zu 3 Thesen</label>
+      <input type="text" id="infosheet-these-1" class="auth-input" placeholder="These 1" maxlength="200" />
+      <input type="text" id="infosheet-these-2" class="auth-input" placeholder="These 2" maxlength="200" />
+      <input type="text" id="infosheet-these-3" class="auth-input" placeholder="These 3" maxlength="200" />
+
+      <button type="button" id="infosheet-editor-save" class="auth-submit-btn">Speichern</button>
     </div>
   </div>
 </div>
@@ -1597,6 +1675,145 @@ function sizePercent(n) {
   return Math.max(4, Math.min(100, p * 100));
 }
 
+// --- Infosheet je Praxis (lokal auf diesem Gerät, geräteweit geteilt —
+// im Gegensatz zur Statistik nicht an einen Account gebunden, da die
+// Infothek für das ganze Team zur selben Praxis gehören soll). ---
+function loadInfosheets() {
+  try {
+    return JSON.parse(localStorage.getItem("medipulse_infosheets") || "{}");
+  } catch {
+    return {};
+  }
+}
+function saveInfosheets(sheets) {
+  localStorage.setItem("medipulse_infosheets", JSON.stringify(sheets));
+}
+function getInfosheet(doctorId) {
+  return loadInfosheets()[doctorId] || null;
+}
+function saveInfosheet(doctorId, sheet) {
+  const sheets = loadInfosheets();
+  sheets[doctorId] = sheet;
+  saveInfosheets(sheets);
+}
+function deleteInfosheet(doctorId) {
+  const sheets = loadInfosheets();
+  delete sheets[doctorId];
+  saveInfosheets(sheets);
+}
+
+let infothekExpandedFor = null;
+
+function renderInfosheetContent(sheet) {
+  const rows = [];
+  const section = (label, text) =>
+    text ? `<div class="infosheet-section"><div class="infosheet-label">${esc(label)}</div><div class="infosheet-text">${esc(text)}</div></div>` : "";
+  rows.push(section("Trigger", sheet.trigger));
+  rows.push(section("Was die Praxis verkauft", sheet.verkauft));
+  rows.push(section("Firmografie", sheet.firmografie));
+  rows.push(section("Struktur", sheet.struktur));
+  rows.push(section("Produkt", sheet.produkt));
+  const theses = (sheet.aufhaenger || []).filter((t) => t && t.trim());
+  if (theses.length) {
+    rows.push(
+      `<div class="infosheet-section"><div class="infosheet-label">Der Aufhänger</div>${theses
+        .map((t, i) => `<div class="infosheet-thesis">${i + 1}. ${esc(t)}</div>`)
+        .join("")}</div>`
+    );
+  }
+  const content = rows.filter(Boolean).join("");
+  return content || `<div class="infothek-empty">Infosheet ist noch leer.</div>`;
+}
+
+function infothekHtml(d) {
+  const sheet = getInfosheet(d.id);
+  const expanded = infothekExpandedFor === d.id;
+  const body = sheet
+    ? `
+      ${renderInfosheetContent(sheet)}
+      <div class="infosheet-meta">Erstellt von ${esc(sheet.createdBy || "Unbekannt")} · zuletzt aktualisiert am ${esc(sheet.updatedAt || sheet.createdAt || "")}</div>
+      <div class="infosheet-actions">
+        <button type="button" class="infosheet-edit-btn" data-id="${d.id}">Bearbeiten</button>
+        <button type="button" class="infosheet-delete-btn" data-id="${d.id}">Löschen</button>
+      </div>`
+    : `
+      <div class="infothek-empty">Noch kein Infosheet vorhanden.</div>
+      <button type="button" class="infosheet-create-btn" data-id="${d.id}">+ Infosheet erstellen</button>`;
+  return `
+    <button type="button" class="infothek-toggle" data-id="${d.id}">📄 Infothek <span class="infothek-chevron">${expanded ? "▴" : "▾"}</span></button>
+    <div class="infothek-body" ${expanded ? "" : "hidden"}>${body}</div>`;
+}
+
+let infosheetEditingDoctorId = null;
+function openInfosheetEditor(d) {
+  infosheetEditingDoctorId = d.id;
+  const sheet = getInfosheet(d.id) || {};
+  document.getElementById("infosheet-editor-title").textContent = `Infosheet: ${d.name}`;
+  document.getElementById("infosheet-trigger").value = sheet.trigger || "";
+  document.getElementById("infosheet-verkauft").value = sheet.verkauft || "";
+  document.getElementById("infosheet-firmografie").value = sheet.firmografie || "";
+  document.getElementById("infosheet-struktur").value = sheet.struktur || "";
+  document.getElementById("infosheet-produkt").value = sheet.produkt || "";
+  const theses = sheet.aufhaenger || [];
+  document.getElementById("infosheet-these-1").value = theses[0] || "";
+  document.getElementById("infosheet-these-2").value = theses[1] || "";
+  document.getElementById("infosheet-these-3").value = theses[2] || "";
+  document.getElementById("infosheet-editor-backdrop").hidden = false;
+}
+function closeInfosheetEditor() {
+  document.getElementById("infosheet-editor-backdrop").hidden = true;
+  infosheetEditingDoctorId = null;
+}
+document.getElementById("infosheet-editor-close").addEventListener("click", closeInfosheetEditor);
+document.getElementById("infosheet-editor-backdrop").addEventListener("click", (e) => {
+  if (e.target.id === "infosheet-editor-backdrop") closeInfosheetEditor();
+});
+document.getElementById("infosheet-editor-save").addEventListener("click", () => {
+  if (!infosheetEditingDoctorId) return;
+  const existing = getInfosheet(infosheetEditingDoctorId);
+  const today = new Date().toLocaleDateString("de-DE");
+  const sheet = {
+    createdBy: (existing && existing.createdBy) || currentUser || "Unbekannt",
+    createdAt: (existing && existing.createdAt) || today,
+    updatedAt: today,
+    trigger: document.getElementById("infosheet-trigger").value.trim(),
+    verkauft: document.getElementById("infosheet-verkauft").value.trim(),
+    firmografie: document.getElementById("infosheet-firmografie").value.trim(),
+    struktur: document.getElementById("infosheet-struktur").value.trim(),
+    produkt: document.getElementById("infosheet-produkt").value.trim(),
+    aufhaenger: [
+      document.getElementById("infosheet-these-1").value.trim(),
+      document.getElementById("infosheet-these-2").value.trim(),
+      document.getElementById("infosheet-these-3").value.trim(),
+    ],
+  };
+  saveInfosheet(infosheetEditingDoctorId, sheet);
+  infothekExpandedFor = infosheetEditingDoctorId;
+  closeInfosheetEditor();
+  if (currentDetailDoctor) showDetail(currentDetailDoctor);
+});
+
+document.addEventListener("click", (e) => {
+  const infothekToggle = e.target.closest(".infothek-toggle");
+  if (infothekToggle) {
+    const body = infothekToggle.parentElement.querySelector(".infothek-body");
+    const willOpen = body.hidden;
+    body.hidden = !willOpen;
+    infothekToggle.querySelector(".infothek-chevron").textContent = willOpen ? "▴" : "▾";
+    infothekExpandedFor = willOpen ? infothekToggle.dataset.id : null;
+  }
+  const createBtn = e.target.closest(".infosheet-create-btn");
+  if (createBtn && currentDetailDoctor) openInfosheetEditor(currentDetailDoctor);
+  const editBtn = e.target.closest(".infosheet-edit-btn");
+  if (editBtn && currentDetailDoctor) openInfosheetEditor(currentDetailDoctor);
+  const deleteBtn = e.target.closest(".infosheet-delete-btn");
+  if (deleteBtn && currentDetailDoctor) {
+    deleteInfosheet(currentDetailDoctor.id);
+    infothekExpandedFor = currentDetailDoctor.id;
+    showDetail(currentDetailDoctor);
+  }
+});
+
 function showDetail(d) {
   currentDetailDoctor = d;
   document.getElementById("detail").hidden = false;
@@ -1649,6 +1866,7 @@ function showDetail(d) {
   if (d.email) actions.push(`<a href="mailto:${esc(d.email)}">E-Mail</a>`);
   actions.push(`<button type="button" class="popup-route-btn">Route</button>`);
   document.getElementById("d-actions").innerHTML = actions.join("");
+  document.getElementById("d-infothek").innerHTML = infothekHtml(d);
 }
 
 document.getElementById("detail-close").addEventListener("click", () => {
@@ -1680,9 +1898,10 @@ document.addEventListener("click", (e) => {
   // aus, sodass panel.contains(e.target) danach fälschlich "außerhalb"
   // meldet und das Panel sofort wieder schließt.
   const path = e.composedPath();
-  // Klicks im Notiz-Editor (eigenes Overlay über dem Statistik-Panel)
-  // dürfen das dahinterliegende Panel nicht schließen.
+  // Klicks im Notiz-Editor oder Infosheet-Editor (eigene Overlays über
+  // anderen Panels) dürfen das dahinterliegende Panel nicht schließen.
   if (path.includes(document.getElementById("note-editor-backdrop"))) return;
+  if (path.includes(document.getElementById("infosheet-editor-backdrop"))) return;
   [
     ["settings-panel", "settings-toggle"],
     ["auth-panel", "user-badge"],
