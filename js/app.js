@@ -809,43 +809,82 @@ function slugifyFilename(text) {
 // Server-Anbindung nötig), immer frisch aus den gespeicherten Feldern, statt
 // die Bytes selbst zu persistieren. So bleibt die Datei automatisch mit den
 // zuletzt gespeicherten Angaben synchron.
+const PDF_STATUS_COLORS = {
+  kunde: [46, 204, 113],
+  interessent: [245, 166, 35],
+  lead: [79, 140, 255],
+  inaktiv: [107, 120, 147],
+};
+const PDF_ACCENT = [79, 140, 255];
+
 function buildInfosheetPdf(d, sheet) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   const marginX = 18;
-  const maxWidth = doc.internal.pageSize.getWidth() - marginX * 2;
-  let y = 20;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(140);
-  doc.text("MEDIPULSE · INFOSHEET", marginX, y);
-  y += 9;
-
-  doc.setFontSize(18);
-  doc.setTextColor(20);
-  doc.text(d.name, marginX, y);
-  y += 7;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10.5);
-  doc.setTextColor(90);
-  doc.text(`${d.fachrichtung || ""} · ${d.stadt || ""}`, marginX, y);
-  y += 10;
+  const maxWidth = pageWidth - marginX * 2;
+  let y;
 
   const ensureSpace = (needed) => {
-    if (y + needed > 280) {
+    if (y + needed > pageHeight - 16) {
       doc.addPage();
       y = 20;
     }
   };
+
+  // Kopfband
+  doc.setFillColor(...PDF_ACCENT);
+  doc.rect(0, 0, pageWidth, 26, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text("MEDIPULSE", marginX, 15);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(225, 235, 255);
+  doc.text("INFOSHEET", marginX, 20.5);
+  doc.setFontSize(9);
+  doc.text(new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" }), pageWidth - marginX, 15, { align: "right" });
+
+  // Titel + Status-Badge + Subtitel
+  y = 38;
+  doc.setTextColor(20, 20, 25);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(19);
+  doc.text(d.name, marginX, y);
+  y += 7.5;
+
+  const statusColor = PDF_STATUS_COLORS[d.status] || PDF_STATUS_COLORS.inaktiv;
+  const statusLabel = STATUS_LABELS[d.status] || d.status || "";
+  let subtitleX = marginX;
+  if (statusLabel) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    const badgeTextWidth = doc.getTextWidth(statusLabel);
+    const badgeWidth = badgeTextWidth + 6;
+    doc.setFillColor(...statusColor);
+    doc.roundedRect(marginX, y - 4.2, badgeWidth, 5.6, 1.4, 1.4, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.text(statusLabel, marginX + 3, y - 0.4);
+    subtitleX = marginX + badgeWidth + 4;
+  }
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.setTextColor(90);
+  doc.text(`${d.fachrichtung || ""} · ${d.stadt || ""}`, subtitleX, y);
+  y += 6;
+
+  doc.setDrawColor(220, 226, 238);
+  doc.line(marginX, y, pageWidth - marginX, y);
+  y += 8;
 
   const section = (label, text) => {
     if (!text) return;
     ensureSpace(10);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.setTextColor(35, 95, 200);
+    doc.setTextColor(...PDF_ACCENT);
     doc.text(label.toUpperCase(), marginX, y);
     y += 5.5;
     doc.setFont("helvetica", "normal");
@@ -859,6 +898,48 @@ function buildInfosheetPdf(d, sheet) {
     y += 4;
   };
 
+  // Steckbrief aus den vorhandenen AOK-Basisdaten (nicht nur die
+  // manuell recherchierten Felder) — macht das Infosheet auch ohne
+  // ausgefüllte Trigger/Aufhänger-Felder informativ.
+  const factRows = [];
+  if (d.einrichtung) factRows.push(["Einrichtung", d.einrichtung + (d.kette ? ` (Teil von ${d.kette})` : "")]);
+  factRows.push(["Adresse", `${d.strasse || ""}, ${d.plz || ""} ${d.stadt || ""}`.trim()]);
+  if (d.bundesland) factRows.push(["Bundesland", d.bundesland]);
+  if (d.ansprechpartner && d.ansprechpartner !== d.name) factRows.push(["Ansprechpartner", d.ansprechpartner]);
+  if (d.telefon) factRows.push(["Telefon", d.telefon]);
+  if (d.email) factRows.push(["E-Mail", d.email]);
+  if (d.website) factRows.push(["Website", d.website.replace(/^https?:\/\//, "")]);
+  if (d.groesse) factRows.push(["Praxisgröße", d.groesse === 1 ? "1 Arzt/Ärztin" : `${d.groesse} Ärzte/-innen`]);
+
+  if (factRows.length) {
+    ensureSpace(10);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...PDF_ACCENT);
+    doc.text("STECKBRIEF", marginX, y);
+    y += 6;
+    doc.setFontSize(9.5);
+    factRows.forEach(([label, value]) => {
+      if (!value) return;
+      ensureSpace(5.5);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(70, 78, 95);
+      doc.text(`${label}:`, marginX, y);
+      const labelWidth = doc.getTextWidth(`${label}: `);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(25);
+      const lines = doc.splitTextToSize(value, maxWidth - labelWidth);
+      doc.text(lines[0] || "", marginX + labelWidth, y);
+      y += 5.2;
+      for (let i = 1; i < lines.length; i++) {
+        ensureSpace(5.2);
+        doc.text(lines[i], marginX + labelWidth, y);
+        y += 5.2;
+      }
+    });
+    y += 4;
+  }
+
   section("Trigger", sheet.trigger);
   section("Was die Praxis verkauft", sheet.verkauft);
   section("Firmografie", sheet.firmografie);
@@ -870,7 +951,7 @@ function buildInfosheetPdf(d, sheet) {
     ensureSpace(10);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.setTextColor(35, 95, 200);
+    doc.setTextColor(...PDF_ACCENT);
     doc.text("DER AUFHÄNGER", marginX, y);
     y += 5.5;
     doc.setFont("helvetica", "normal");
@@ -886,14 +967,22 @@ function buildInfosheetPdf(d, sheet) {
     });
   }
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
-  doc.setTextColor(150);
-  doc.text(
-    `Erstellt von ${sheet.createdBy || "Unbekannt"} · zuletzt aktualisiert am ${sheet.updatedAt || sheet.createdAt || ""}`,
-    marginX,
-    290
-  );
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    doc.setDrawColor(...PDF_ACCENT);
+    doc.setLineWidth(0.8);
+    doc.line(0, pageHeight - 10, pageWidth, pageHeight - 10);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text(
+      `Erstellt von ${sheet.createdBy || "Unbekannt"} · zuletzt aktualisiert am ${sheet.updatedAt || sheet.createdAt || ""}`,
+      marginX,
+      pageHeight - 5
+    );
+    if (pageCount > 1) doc.text(`${p} / ${pageCount}`, pageWidth - marginX, pageHeight - 5, { align: "right" });
+  }
 
   return doc;
 }
