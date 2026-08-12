@@ -1252,7 +1252,7 @@ function buildOutreachEmail(d) {
     "",
     "Gerne ordnen wir das in einem kurzen, unverbindlichen Gespräch für Sie ein — oder Sie lassen uns kurz wissen, falls das Thema aktuell keine Priorität hat.",
     "",
-    "[1-2 Sätze: was MediPulse macht und wie es dabei helfen könnte]",
+    "MediPulse hilft Arztpraxen und MVZ dabei, ihre Abläufe effizienter zu steuern, Potenziale zu erkennen und bessere Entscheidungen auf Basis ihrer Daten zu treffen — so sparen Teams Zeit, verbessern Prozesse und können sich stärker auf ihre Patienten konzentrieren.",
     "",
     "Einen kurzen Überblick über MediPulse finden Sie hier: https://www.medipulse.de",
     "",
