@@ -106,6 +106,59 @@ html, body {
   white-space: nowrap;
 }
 
+.notif-bell-btn { position: relative; }
+.notif-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #e74c3c;
+  box-shadow: 0 0 0 2px var(--panel);
+}
+
+.notif-panel { width: 300px; max-height: 60vh; overflow-y: auto; }
+.notif-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.notif-row:last-child { border-bottom: none; }
+.notif-info { min-width: 0; }
+.notif-name { font-size: 12.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notif-sub { font-size: 10.5px; color: var(--text-dim); margin-top: 2px; }
+.notif-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.notif-followup-btn {
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--accent);
+  background: rgba(79, 140, 255, 0.12);
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.notif-followup-btn:hover { background: rgba(79, 140, 255, 0.22); }
+.notif-delete-btn {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+.notif-delete-btn:hover { background: rgba(231, 76, 60, 0.15); color: #e74c3c; }
+
 .auth-panel {
   position: fixed;
   top: 74px;
@@ -1106,6 +1159,36 @@ html, body {
 .connections-row { color: #ffb347; font-weight: 600; }
 
 .doctor-earnings { color: var(--c-kunde); font-weight: 600; }
+.doctor-make-kunde-btn {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--c-kunde);
+  background: rgba(46, 204, 113, 0.12);
+  color: var(--c-kunde);
+}
+.doctor-make-kunde-btn:hover { background: rgba(46, 204, 113, 0.22); }
+
+.popup-make-kunde-btn {
+  display: block;
+  width: 100%;
+  margin: 4px 0 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--c-kunde);
+  background: rgba(46, 204, 113, 0.12);
+  color: var(--c-kunde);
+  font-family: inherit;
+}
+.popup-make-kunde-btn:hover { background: rgba(46, 204, 113, 0.22); }
 
 .popup-actions { display: flex; gap: 8px; margin-top: 10px; }
 .popup-actions a, .popup-actions button {

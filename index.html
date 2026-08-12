@@ -23,10 +23,19 @@
       <div class="stat status-lead"><span class="stat-value" id="stat-lead">0</span><span class="stat-label">Leads</span></div>
     </div>
 
+    <button id="notif-bell" class="icon-btn notif-bell-btn" title="Follow-ups">🔔<span class="notif-dot" id="notif-dot" hidden></span></button>
     <button id="user-badge" class="icon-btn user-badge-btn" title="Anmelden"><span id="user-badge-icon">👤</span> <span id="user-badge-label">Anmelden</span></button>
     <button id="sales-stats-toggle" class="icon-btn" title="Meine Statistik">📊</button>
     <button id="settings-toggle" class="icon-btn" title="Einstellungen">⚙️</button>
   </header>
+
+  <div class="settings-panel notif-panel" id="notif-panel" hidden>
+    <div class="settings-panel-header">
+      <span>Follow-ups</span>
+      <button id="notif-close" class="icon-btn" title="Schließen">×</button>
+    </div>
+    <div id="notif-list"></div>
+  </div>
 
   <div class="auth-panel" id="auth-panel" hidden>
     <div class="settings-panel-header">

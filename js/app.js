@@ -98,6 +98,40 @@ let maxGroesseInData = 1;
 let AERZTE_DATA = [];
 const MAX_LIST_ITEMS = 300;
 
+// Der Status (kunde/interessent/lead/inaktiv) kommt ursprünglich aus den
+// statischen AOK-Rohdaten und lässt sich dort nicht ändern. Manuelle
+// Statusänderungen (aktuell nur "zum Kunden machen") werden separat in
+// localStorage abgelegt und beim Laden direkt auf die Datensätze
+// angewendet — so funktionieren Filter, Zähler, PDF-Export usw. unverändert
+// weiter, ohne dass jede Stelle den Override extra nachschlagen muss.
+function getStatusOverrides() {
+  try {
+    return JSON.parse(localStorage.getItem("medipulse_status_overrides") || "{}");
+  } catch {
+    return {};
+  }
+}
+function saveStatusOverrides(overrides) {
+  localStorage.setItem("medipulse_status_overrides", JSON.stringify(overrides));
+}
+function applyStatusOverrides(data) {
+  const overrides = getStatusOverrides();
+  data.forEach((d) => {
+    if (overrides[d.id]) d.status = overrides[d.id];
+  });
+}
+function markDoctorAsKunde(d) {
+  if (d.status === "kunde") return;
+  d.status = "kunde";
+  const overrides = getStatusOverrides();
+  overrides[d.id] = "kunde";
+  saveStatusOverrides(overrides);
+  bumpStat("kunden", 1);
+  updateStats();
+  renderList();
+  refreshPopupFor(d.id);
+}
+
 // Echte Ärzte-Daten liegen gzip-komprimiert unter data/aerzte-teil*.json.gz
 // (siehe scripts/csv_to_json.py). Fehlende Teile (noch nicht geliefert) werden
 // stillschweigend übersprungen; ohne jeden Teil greift die Beispiel-Liste aus
@@ -220,6 +254,7 @@ function maybeInit() {
 
 setLoadingState(true);
 loadAerzteData().then((data) => {
+  applyStatusOverrides(data);
   AERZTE_DATA = data;
   dataReady = true;
   maxGroesseInData = data.reduce((max, d) => Math.max(max, d.groesse || 1), 1);
@@ -228,8 +263,10 @@ loadAerzteData().then((data) => {
   // (externe Netzwerkabfrage) schon geladen sind.
   renderList();
   updateStats();
+  updateNotificationBell();
   maybeInit();
 });
+setInterval(updateNotificationBell, 5 * 60 * 1000);
 
 map.on("load", () => {
   // Globus-Projektion aktivieren: beim Herauszoomen erscheint eine Weltkugel,
@@ -1265,6 +1302,95 @@ function buildOutreachMailto(d) {
   return `mailto:${d.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
+// --- Follow-up-Erinnerung ---
+// Die App kann nur erkennen, dass auf "E-Mail" geklickt wurde (der
+// E-Mail-Client des Geräts öffnet sich mit vorausgefülltem Entwurf) —
+// nicht, ob die E-Mail im Client tatsächlich abgeschickt wurde. Der Klick
+// ist trotzdem das einzige verfügbare Signal und wird als "E-Mail
+// gesendet" gewertet. 24 Stunden danach erscheint ein roter Punkt an der
+// Glocke, bis die Person entweder ein Follow-up bekommt oder die
+// Erinnerung manuell gelöscht wird.
+const FOLLOWUP_DELAY_MS = 24 * 60 * 60 * 1000;
+
+function getSentEmails() {
+  try {
+    return JSON.parse(localStorage.getItem("medipulse_sent_emails") || "{}");
+  } catch {
+    return {};
+  }
+}
+function saveSentEmails(map) {
+  localStorage.setItem("medipulse_sent_emails", JSON.stringify(map));
+}
+function recordEmailSent(doctorId) {
+  const map = getSentEmails();
+  map[doctorId] = { sentAt: Date.now() };
+  saveSentEmails(map);
+  updateNotificationBell();
+}
+function dismissFollowUp(doctorId) {
+  const map = getSentEmails();
+  delete map[doctorId];
+  saveSentEmails(map);
+  updateNotificationBell();
+  renderNotificationPanel();
+}
+function getDueFollowUps() {
+  const map = getSentEmails();
+  const now = Date.now();
+  return Object.entries(map)
+    .filter(([, rec]) => now - rec.sentAt >= FOLLOWUP_DELAY_MS)
+    .map(([id, rec]) => ({ doctorId: Number(id), sentAt: rec.sentAt }))
+    .filter((r) => AERZTE_DATA.some((d) => d.id === r.doctorId));
+}
+function buildFollowUpEmail(d) {
+  const orgLabel = d.einrichtung || d.name;
+  const subject = `Kurze Rückfrage zu Ihrer ${orgLabel}`;
+  const body = [
+    "Guten Tag [Name],",
+    "",
+    `vor Kurzem hatte ich Ihnen eine kurze Einschätzung zu Ihrer ${orgLabel} geschickt. Ich wollte kurz nachfragen, ob das Thema für Sie relevant ist oder ob sich zwischenzeitlich etwas geändert hat.`,
+    "",
+    `Über eine kurze Rückmeldung würde ich mich freuen — auch wenn die Antwort "aktuell kein Thema" ist.`,
+    "",
+    "Viele Grüße",
+    currentUser || "[Ihr Name]",
+    "MediPulse",
+  ].join("\n");
+  return { subject, body };
+}
+function buildFollowUpMailto(d) {
+  const { subject, body } = buildFollowUpEmail(d);
+  return `mailto:${d.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+function updateNotificationBell() {
+  document.getElementById("notif-dot").hidden = getDueFollowUps().length === 0;
+}
+function renderNotificationPanel() {
+  const due = getDueFollowUps().sort((a, b) => a.sentAt - b.sentAt);
+  const list = document.getElementById("notif-list");
+  if (!due.length) {
+    list.innerHTML = `<div class="infothek-empty">Keine offenen Follow-ups.</div>`;
+    return;
+  }
+  list.innerHTML = due
+    .map((r) => {
+      const d = AERZTE_DATA.find((x) => x.id === r.doctorId);
+      return `
+      <div class="notif-row">
+        <div class="notif-info">
+          <div class="notif-name">${escapeHtml(d.name)}</div>
+          <div class="notif-sub">E-Mail gesendet am ${new Date(r.sentAt).toLocaleDateString("de-DE")}</div>
+        </div>
+        <div class="notif-actions">
+          <a class="notif-followup-btn" data-id="${d.id}" href="${escapeHtml(buildFollowUpMailto(d))}">Follow-up senden</a>
+          <button type="button" class="notif-delete-btn" data-id="${d.id}" title="Entfernen">×</button>
+        </div>
+      </div>`;
+    })
+    .join("");
+}
+
 let popupCollapsed = false;
 let popupCollapsedForId = null;
 
@@ -1297,6 +1423,7 @@ function openDoctorPopup(d, coords) {
       ${conn.total > 0 ? `<div class="popup-row connections-row">🔗 ${conn.total.toLocaleString("de-DE")} weitere Standorte der Kette ${escapeHtml(d.kette)} auf der Karte hervorgehoben${conn.total > conn.items.length ? ` (${conn.items.length} angezeigt)` : ""}</div>` : ""}
       ${sizeGaugeHtml(d.groesse)}
       ${earningsRowHtml(d)}
+      ${d.status === "kunde" ? "" : `<button type="button" class="popup-make-kunde-btn" data-id="${d.id}">→ Zum Kunden machen</button>`}
       <div class="popup-row">📍 ${escapeHtml(d.strasse)}, ${escapeHtml(d.plz)} ${escapeHtml(d.stadt)}</div>
       ${d.ansprechpartner && d.ansprechpartner !== d.name ? `<div class="popup-row">👤 ${escapeHtml(d.ansprechpartner)}</div>` : ""}
       ${d.telefon ? `<div class="popup-row">📞 ${escapeHtml(d.telefon)}</div>` : ""}
@@ -1305,7 +1432,7 @@ function openDoctorPopup(d, coords) {
       ${d.notizen ? `<div class="popup-row" style="color:var(--text-dim)">📝 ${escapeHtml(d.notizen)}</div>` : ""}
       <div class="popup-actions">
         ${d.telefon ? `<a href="tel:${escapeHtml(d.telefon)}">Anrufen</a>` : ""}
-        ${d.email ? `<a href="${escapeHtml(buildOutreachMailto(d))}">E-Mail</a>` : ""}
+        ${d.email ? `<a class="popup-email-btn" data-id="${d.id}" href="${escapeHtml(buildOutreachMailto(d))}">E-Mail</a>` : ""}
         <button type="button" class="popup-route-btn">Route</button>
       </div>
       ${infothekHtml(d)}
@@ -1523,9 +1650,21 @@ function renderList() {
       </div>
       <div class="doctor-meta">${escapeHtml(KATEGORIE_LABELS[kategorie])} · ${escapeHtml(d.fachrichtung)} · ${escapeHtml(d.stadt)}</div>
       ${d.einrichtung ? `<div class="doctor-meta doctor-einrichtung">${escapeHtml(d.einrichtung)}</div>` : ""}
-      ${d.status === "kunde" ? "" : `<div class="doctor-meta doctor-earnings">💰 ${((d.groesse || 1) * gewinnProArzt).toLocaleString("de-DE")} € möglich</div>`}
+      ${
+        d.status === "kunde"
+          ? ""
+          : `<div class="doctor-meta doctor-earnings">💰 ${((d.groesse || 1) * gewinnProArzt).toLocaleString("de-DE")} € möglich</div>
+             <button type="button" class="doctor-make-kunde-btn" data-id="${d.id}">→ Zum Kunden machen</button>`
+      }
     `;
     li.addEventListener("click", () => selectDoctor(d.id, true));
+    const makeKundeBtn = li.querySelector(".doctor-make-kunde-btn");
+    if (makeKundeBtn) {
+      makeKundeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        markDoctorAsKunde(d);
+      });
+    }
     list.appendChild(li);
   });
 
@@ -1706,6 +1845,22 @@ document.getElementById("settings-toggle").addEventListener("click", () => {
 document.getElementById("settings-close").addEventListener("click", () => {
   document.getElementById("settings-panel").hidden = true;
 });
+document.getElementById("notif-bell").addEventListener("click", () => {
+  const panel = document.getElementById("notif-panel");
+  const willOpen = panel.hidden;
+  closeAllOverlayPanels();
+  panel.hidden = !willOpen;
+  if (willOpen) renderNotificationPanel();
+});
+document.getElementById("notif-close").addEventListener("click", () => {
+  document.getElementById("notif-panel").hidden = true;
+});
+document.addEventListener("click", (e) => {
+  const followUpBtn = e.target.closest(".notif-followup-btn");
+  if (followUpBtn) dismissFollowUp(Number(followUpBtn.dataset.id));
+  const deleteFollowUpBtn = e.target.closest(".notif-delete-btn");
+  if (deleteFollowUpBtn) dismissFollowUp(Number(deleteFollowUpBtn.dataset.id));
+});
 document.addEventListener("click", (e) => {
   // composedPath() statt e.target: Klicks, die das Panel per innerHTML
   // neu rendern (z.B. Statistik-Zähler), hängen ihr Ziel-Element dabei
@@ -1721,6 +1876,7 @@ document.addEventListener("click", (e) => {
     ["settings-panel", "settings-toggle"],
     ["auth-panel", "user-badge"],
     ["sales-stats-panel", "sales-stats-toggle"],
+    ["notif-panel", "notif-bell"],
   ].forEach(([panelId, toggleId]) => {
     const panel = document.getElementById(panelId);
     const toggleBtn = document.getElementById(toggleId);
@@ -1971,6 +2127,14 @@ document.addEventListener("click", (e) => {
     popupCollapsedForId = currentPopupDoctor.id;
     refreshOpenPopup();
   }
+  const makeKundeBtn = e.target.closest(".popup-make-kunde-btn");
+  if (makeKundeBtn && currentPopupDoctor) {
+    markDoctorAsKunde(currentPopupDoctor);
+  }
+  const emailBtn = e.target.closest(".popup-email-btn");
+  if (emailBtn) {
+    recordEmailSent(Number(emailBtn.dataset.id));
+  }
   const infothekToggle = e.target.closest(".infothek-toggle");
   if (infothekToggle) {
     const body = infothekToggle.parentElement.querySelector(".infothek-body");
@@ -2161,6 +2325,7 @@ function closeAllOverlayPanels() {
   document.getElementById("settings-panel").hidden = true;
   document.getElementById("auth-panel").hidden = true;
   document.getElementById("sales-stats-panel").hidden = true;
+  document.getElementById("notif-panel").hidden = true;
 }
 
 function renderAuthPanel() {
