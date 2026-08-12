@@ -805,6 +805,56 @@ function deleteInfosheet(doctorId) {
 // "Bearbeiten" von Hand ergänzen.
 let infosheetResearchPending = null;
 
+// Optionale Dokumente (PDF/Bild) je Praxis, die vor/nach der Recherche
+// hochgeladen werden können — fließen als Zusatzkontext in die
+// Gemini-Recherche ein (siehe createInfosheet). Nur lokal in localStorage
+// gespeichert, daher bewusst klein gehalten (Größen-/Anzahl-Limit).
+const INFOSHEET_DOC_MAX_BYTES = 4 * 1024 * 1024;
+const INFOSHEET_DOC_MAX_COUNT = 3;
+const INFOSHEET_DOC_ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg"];
+
+function infosheetDocsKey(doctorId) {
+  return `medipulse_infosheet_docs_${doctorId}`;
+}
+function getInfosheetDocs(doctorId) {
+  try {
+    return JSON.parse(localStorage.getItem(infosheetDocsKey(doctorId)) || "[]");
+  } catch {
+    return [];
+  }
+}
+function saveInfosheetDocs(doctorId, docs) {
+  localStorage.setItem(infosheetDocsKey(doctorId), JSON.stringify(docs));
+}
+function removeInfosheetDoc(doctorId, index) {
+  const docs = getInfosheetDocs(doctorId);
+  docs.splice(index, 1);
+  saveInfosheetDocs(doctorId, docs);
+}
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Datei konnte nicht gelesen werden."));
+    reader.readAsDataURL(file);
+  });
+}
+async function addInfosheetDoc(doctorId, file) {
+  if (!INFOSHEET_DOC_ALLOWED_TYPES.includes(file.type)) {
+    throw new Error("Nur PDF, PNG oder JPG werden unterstützt.");
+  }
+  if (file.size > INFOSHEET_DOC_MAX_BYTES) {
+    throw new Error("Datei ist zu groß (max. 4 MB).");
+  }
+  const docs = getInfosheetDocs(doctorId);
+  if (docs.length >= INFOSHEET_DOC_MAX_COUNT) {
+    throw new Error(`Maximal ${INFOSHEET_DOC_MAX_COUNT} Dokumente pro Praxis.`);
+  }
+  const dataUrl = await readFileAsDataUrl(file);
+  docs.push({ name: file.name, mimeType: file.type, dataUrl });
+  saveInfosheetDocs(doctorId, docs);
+}
+
 async function createInfosheet(d) {
   const today = new Date().toLocaleDateString("de-DE");
   const sheet = {
@@ -829,6 +879,11 @@ async function createInfosheet(d) {
   refreshPopupFor(d.id);
 
   try {
+    const docs = getInfosheetDocs(d.id).map((doc) => ({
+      name: doc.name,
+      mimeType: doc.mimeType,
+      data: doc.dataUrl.split(",")[1],
+    }));
     const res = await fetch(geminiWorkerUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -841,6 +896,7 @@ async function createInfosheet(d) {
         bundesland: d.bundesland,
         fachrichtung: d.fachrichtung,
         website: d.website,
+        files: docs,
       }),
     });
     const data = await res.json();
@@ -1103,6 +1159,30 @@ function renderInfosheetContent(sheet) {
   return content || `<div class="infothek-empty">Infosheet ist noch leer.</div>`;
 }
 
+// Nur sinnvoll, wenn die Gemini-Recherche eingerichtet ist — ohne sie
+// würde ein hochgeladenes Dokument nirgendwo ausgewertet, nur gespeichert.
+function infosheetDocsHtml(d) {
+  if (!geminiWorkerUrl) return "";
+  const docs = getInfosheetDocs(d.id);
+  const rows = docs
+    .map(
+      (doc, i) => `
+      <div class="infosheet-doc-row">
+        <span class="infosheet-doc-name">📎 ${escapeHtml(doc.name)}</span>
+        <button type="button" class="infosheet-doc-remove" data-id="${d.id}" data-index="${i}" title="Entfernen">×</button>
+      </div>`
+    )
+    .join("");
+  return `
+    <div class="infosheet-docs">
+      <div class="infosheet-docs-label">Dokumente zur Recherche (PDF/Bild, optional)</div>
+      ${rows}
+      ${docs.length < INFOSHEET_DOC_MAX_COUNT ? `<button type="button" class="infosheet-doc-upload-btn" data-id="${d.id}">+ Dokument hochladen</button>` : ""}
+      <input type="file" class="infosheet-doc-input" data-id="${d.id}" accept="application/pdf,image/png,image/jpeg" hidden>
+      <div class="infosheet-doc-error" data-id="${d.id}" hidden></div>
+    </div>`;
+}
+
 function infothekHtml(d) {
   const sheet = getInfosheet(d.id);
   const expanded = infothekExpandedFor === d.id;
@@ -1124,11 +1204,14 @@ function infothekHtml(d) {
       <div class="infosheet-actions">
         <button type="button" class="infosheet-edit-btn" data-id="${d.id}">Bearbeiten</button>
         <button type="button" class="infosheet-delete-btn" data-id="${d.id}">Löschen</button>
-      </div>`;
+      </div>
+      ${infosheetDocsHtml(d)}
+      ${geminiWorkerUrl && getInfosheetDocs(d.id).length ? `<button type="button" class="infosheet-reresearch-btn" data-id="${d.id}">🔄 Mit Dokumenten neu recherchieren</button>` : ""}`;
   } else {
     body = `
       <div class="infothek-empty">Noch kein Infosheet vorhanden.</div>
-      <button type="button" class="infosheet-create-btn" data-id="${d.id}">+ Infosheet erstellen</button>`;
+      <button type="button" class="infosheet-create-btn" data-id="${d.id}">+ Infosheet erstellen</button>
+      ${infosheetDocsHtml(d)}`;
   }
   return `
     <div class="infothek">
@@ -1819,6 +1902,40 @@ document.addEventListener("click", (e) => {
     deleteInfosheet(currentPopupDoctor.id);
     infothekExpandedFor = currentPopupDoctor.id;
     refreshOpenPopup();
+  }
+  const docUploadBtn = e.target.closest(".infosheet-doc-upload-btn");
+  if (docUploadBtn) {
+    docUploadBtn.parentElement.querySelector(".infosheet-doc-input").click();
+  }
+  const docRemoveBtn = e.target.closest(".infosheet-doc-remove");
+  if (docRemoveBtn && currentPopupDoctor) {
+    removeInfosheetDoc(currentPopupDoctor.id, Number(docRemoveBtn.dataset.index));
+    infothekExpandedFor = currentPopupDoctor.id;
+    refreshOpenPopup();
+  }
+  const reresearchBtn = e.target.closest(".infosheet-reresearch-btn");
+  if (reresearchBtn && currentPopupDoctor) {
+    if (confirm("Das überschreibt Trigger, Firmografie, Struktur, Produkt und Aufhänger mit einer neuen Recherche. Fortfahren?")) {
+      infothekExpandedFor = currentPopupDoctor.id;
+      createInfosheet(currentPopupDoctor);
+    }
+  }
+});
+
+document.addEventListener("change", async (e) => {
+  const docInput = e.target.closest(".infosheet-doc-input");
+  if (!docInput || !currentPopupDoctor) return;
+  const file = docInput.files[0];
+  docInput.value = "";
+  if (!file) return;
+  try {
+    await addInfosheetDoc(currentPopupDoctor.id, file);
+    infothekExpandedFor = currentPopupDoctor.id;
+    refreshOpenPopup();
+  } catch (err) {
+    const errorEl = docInput.parentElement.querySelector(".infosheet-doc-error");
+    errorEl.textContent = err.message;
+    errorEl.hidden = false;
   }
 });
 

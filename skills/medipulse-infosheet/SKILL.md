@@ -117,6 +117,45 @@ Schließe wie bei jeder Websuche mit den Quellen ab (Titel + Link), damit
 im Vertriebsgespräch bei Bedarf nachvollzogen werden kann, worauf eine
 Aussage beruht.
 
+### 5. Immer zusätzlich als PDF ausgeben
+
+Gib das fertige Infosheet **immer zusätzlich als PDF-Datei** aus, nicht
+nur als Text im Chat — Vertriebler:innen sollen es direkt weiterreichen
+oder ablegen können, ohne selbst etwas nachzubauen.
+
+**In dieser Umgebung (Claude Code mit Datei-/Terminalzugriff auf dieses
+Repo):** Nutze exakt das Layout der App, indem du die echte
+`buildInfosheetPdf(d, sheet)`-Funktion aus `js/app.js` wiederverwendest,
+statt das PDF neu zu bauen — sonst driften Skill-Ausgabe und App-Export
+optisch auseinander. Dafür liegt in diesem Skill-Ordner ein fertiges,
+eigenständiges Skript: `scripts/generate_infosheet_pdf.js`. Es startet
+selbstständig einen temporären lokalen Server im Repo-Root, lädt
+`index.html` per Headless-Browser (Playwright), ruft dort
+`buildInfosheetPdf(d, sheet)` für die gegebene Doctor-ID auf und schreibt
+das Ergebnis als PDF-Datei:
+
+```
+node skills/medipulse-infosheet/scripts/generate_infosheet_pdf.js <doctorId> <outputPath> <sheetJsonPath>
+```
+
+- `<doctorId>`: numerische ID aus `data/aerzte-teil*.json.gz` (Praxis über
+  Name/Stadt in den Rohdaten identifizieren, siehe Schritt 1 oben).
+- `<sheetJsonPath>`: JSON-Datei mit den sechs recherchierten Feldern
+  (`trigger`, `verkauft`, `firmografie`, `struktur`, `produkt`,
+  `aufhaenger` als Array), plus `createdBy`/`createdAt`/`updatedAt`.
+
+Danach die erzeugte PDF-Datei an die Person senden, die die Recherche
+angefragt hat.
+
+**In einer reinen claude.ai-Skill-Umgebung ohne Repo-Zugriff** (z.B. wenn
+ein:e Kolleg:in den Skill über den Team-Account nutzt): Erzeuge das PDF
+stattdessen über die verfügbare Code-Ausführung mit einer PDF-Bibliothek
+(z.B. reportlab/fpdf2 in Python) und bilde das Layout der App möglichst
+nah nach: blaues Kopfband mit "MEDIPULSE" / "INFOSHEET", Titel + Status,
+Steckbrief-Block, dann die sechs Felder in derselben Reihenfolge, Fußzeile
+mit Erstellungsdatum. Es muss keine Pixel-genaue Kopie sein, aber
+erkennbar demselben Corporate Design folgen.
+
 ## Beispiel
 
 **Eingabe:** "Recherchier mir mal die MVZ am Bruderwald in Bamberg,

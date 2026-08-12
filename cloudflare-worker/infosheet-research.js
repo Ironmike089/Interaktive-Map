@@ -23,8 +23,12 @@ function jsonResponse(body, status = 200) {
   });
 }
 
-function buildPrompt(d) {
-  return `Du bist Vertriebsrechercheur für MediPulse, einen Anbieter für Software für Arztpraxen und MVZ. Recherchiere über eine Websuche öffentlich zugängliche Informationen zu folgender Praxis/Einrichtung.
+function buildPrompt(d, hasFiles) {
+  return `Du bist Vertriebsrechercheur für MediPulse, einen Anbieter für Software für Arztpraxen und MVZ. Recherchiere über eine Websuche öffentlich zugängliche Informationen zu folgender Praxis/Einrichtung.${
+    hasFiles
+      ? " Zusätzlich sind ein oder mehrere Dokumente (PDF/Bild) angehängt, die die Praxis selbst bereitgestellt hat — beziehe relevante Informationen daraus mit ein (z.B. Leistungsübersicht, Teamgröße, Selbstdarstellung), aber übernimm keine offensichtlich veralteten oder durch die Websuche widerlegten Angaben ungeprüft."
+      : ""
+  }
 
 Antworte AUSSCHLIESSLICH mit einem JSON-Objekt (kein Markdown, kein Codeblock, keine Erklärung davor oder danach) mit genau diesen Feldern:
 
@@ -77,6 +81,14 @@ export default {
       return jsonResponse({ error: "missing_name" }, 400);
     }
 
+    const files = Array.isArray(doctor.files) ? doctor.files.slice(0, 3) : [];
+    const parts = [{ text: buildPrompt(doctor, files.length > 0) }];
+    files.forEach((f) => {
+      if (f && f.mimeType && f.data) {
+        parts.push({ inlineData: { mimeType: f.mimeType, data: f.data } });
+      }
+    });
+
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
     let geminiRes;
     try {
@@ -87,7 +99,7 @@ export default {
           "x-goog-api-key": env.GEMINI_API_KEY,
         },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: buildPrompt(doctor) }] }],
+          contents: [{ parts }],
           tools: [{ google_search: {} }],
         }),
       });

@@ -49,6 +49,21 @@ Bleibt das Feld leer, wird das Infosheet wie bisher sofort nur mit dem
 Steckbrief aus den vorhandenen Praxisdaten erstellt — kein Fehler, einfach
 die einfachere Variante ohne Recherche.
 
+## Dokumente als Zusatzkontext (optional)
+
+Ist die Worker-URL eingetragen, erscheint in der Infothek jeder Praxis ein
+Upload-Feld „Dokumente zur Recherche" (PDF/PNG/JPG, max. 4 MB, max. 3
+Dateien). Hochgeladene Dokumente werden beim nächsten Recherche-Lauf als
+zusätzlicher Kontext an Gemini mitgeschickt (z.B. ein Praxisflyer oder ein
+Screenshot der Leistungsübersicht) — Gemini bezieht sie zusätzlich zur
+Websuche in die Antwort mit ein. Die Dokumente selbst bleiben nur lokal im
+Browser gespeichert (localStorage), nicht auf dem Worker.
+
+Existiert schon ein Infosheet und werden danach neue Dokumente
+hochgeladen, erscheint ein Button „Mit Dokumenten neu recherchieren" —
+das überschreibt die bisherigen recherchierten Felder (nicht aber die
+Steckbrief-Daten), daher fragt die App vorher noch einmal nach.
+
 ## Kosten
 
 - Cloudflare Workers: kostenloses Kontingent reicht für normalen
