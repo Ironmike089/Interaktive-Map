@@ -376,7 +376,8 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
 .infosheet-field-label:first-child { margin-top: 0; }
 .infosheet-textarea { min-height: 56px; }
 .infosheet-paste-textarea { min-height: 90px; border-style: dashed; }
-#infosheet-paste-apply { width: 100%; text-align: center; margin: 4px 0 0; }
+.infosheet-paste-actions { display: flex; gap: 10px; margin-top: 4px; }
+.infosheet-paste-actions button { flex: 1; text-align: center; }
 .infosheet-editor-divider { height: 1px; background: var(--border-solid); margin: 10px 0 4px; }
 
 .infothek { margin-top: 10px; border-top: 1px solid var(--border-solid); padding-top: 8px; }
@@ -961,7 +962,11 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
     <div class="infosheet-editor-body">
       <label class="infosheet-field-label" for="infosheet-paste-all">Kompletten Infosheet-Text einfügen (z.B. aus dem MediPulse-Skill)</label>
       <textarea id="infosheet-paste-all" class="note-editor-textarea infosheet-textarea infosheet-paste-textarea" placeholder="Hier den kompletten Text aus dem Skill einfügen — die Felder unten werden automatisch anhand der Überschriften (Trigger, Was die Praxis verkauft, Firmografie, Struktur, Produkt, Der Aufhänger) befüllt."></textarea>
-      <button type="button" id="infosheet-paste-apply" class="auth-switch-btn">↓ Auf die Felder unten verteilen</button>
+      <div class="infosheet-paste-actions">
+        <button type="button" id="infosheet-paste-apply" class="auth-switch-btn">↓ Auf die Felder unten verteilen</button>
+        <button type="button" id="infosheet-paste-upload-btn" class="auth-switch-btn">📎 Stattdessen .txt-Datei hochladen</button>
+      </div>
+      <input type="file" id="infosheet-paste-file-input" accept=".txt,text/plain" hidden>
       <div class="infosheet-editor-divider"></div>
 
       <label class="infosheet-field-label" for="infosheet-trigger">Trigger</label>
@@ -2143,6 +2148,17 @@ function applyInfosheetPasteText() {
 document.getElementById("infosheet-paste-apply").addEventListener("click", applyInfosheetPasteText);
 document.getElementById("infosheet-paste-all").addEventListener("paste", () => {
   setTimeout(applyInfosheetPasteText, 0);
+});
+document.getElementById("infosheet-paste-upload-btn").addEventListener("click", () => {
+  document.getElementById("infosheet-paste-file-input").click();
+});
+document.getElementById("infosheet-paste-file-input").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  const text = await file.text();
+  document.getElementById("infosheet-paste-all").value = text;
+  applyInfosheetPasteText();
 });
 
 let infosheetEditingDoctorId = null;

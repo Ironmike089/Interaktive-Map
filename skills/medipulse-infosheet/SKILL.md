@@ -156,6 +156,21 @@ Steckbrief-Block, dann die sechs Felder in derselben Reihenfolge, Fußzeile
 mit Erstellungsdatum. Es muss keine Pixel-genaue Kopie sein, aber
 erkennbar demselben Corporate Design folgen.
 
+### 6. Immer zusätzlich eine .txt-Datei mit demselben Text ausgeben
+
+Speichere den kompletten Ausgabetext aus Schritt 4 (die sechs Blöcke,
+also von `**Trigger:**` bis zum Ende von `**Der Aufhänger:**`, wahlweise
+mit den Quellen darunter) zusätzlich unverändert als `.txt`-Datei und
+sende sie zusammen mit der PDF. Die App hat in der Infothek/im
+Infosheet-Editor ein Datei-Upload-Feld, das genau dieses Format erkennt
+(dieselben `**Feldname:**`-Überschriften wie im Ausgabeformat oben) und
+die Felder daraus automatisch befüllt — dafür muss die Textdatei exakt
+diese Überschriften unverändert enthalten, keine zusammengefasste oder
+umformulierte Version.
+
+Dateiname z.B. `Infosheet_<Praxisname>.txt` (gleiches Namensschema wie
+die PDF, nur mit `.txt`-Endung).
+
 ## Beispiel
 
 **Eingabe:** "Recherchier mir mal die MVZ am Bruderwald in Bamberg,

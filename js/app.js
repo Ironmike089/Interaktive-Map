@@ -1410,6 +1410,17 @@ document.getElementById("infosheet-paste-apply").addEventListener("click", apply
 document.getElementById("infosheet-paste-all").addEventListener("paste", () => {
   setTimeout(applyInfosheetPasteText, 0);
 });
+document.getElementById("infosheet-paste-upload-btn").addEventListener("click", () => {
+  document.getElementById("infosheet-paste-file-input").click();
+});
+document.getElementById("infosheet-paste-file-input").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  const text = await file.text();
+  document.getElementById("infosheet-paste-all").value = text;
+  applyInfosheetPasteText();
+});
 
 let infosheetEditingDoctorId = null;
 function openInfosheetEditor(d) {

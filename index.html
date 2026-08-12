@@ -254,7 +254,11 @@
       <div class="infosheet-editor-body">
         <label class="infosheet-field-label" for="infosheet-paste-all">Kompletten Infosheet-Text einfügen (z.B. aus dem MediPulse-Skill)</label>
         <textarea id="infosheet-paste-all" class="note-editor-textarea infosheet-textarea infosheet-paste-textarea" placeholder="Hier den kompletten Text aus dem Skill einfügen — die Felder unten werden automatisch anhand der Überschriften (Trigger, Was die Praxis verkauft, Firmografie, Struktur, Produkt, Der Aufhänger) befüllt."></textarea>
-        <button type="button" id="infosheet-paste-apply" class="auth-switch-btn">↓ Auf die Felder unten verteilen</button>
+        <div class="infosheet-paste-actions">
+          <button type="button" id="infosheet-paste-apply" class="auth-switch-btn">↓ Auf die Felder unten verteilen</button>
+          <button type="button" id="infosheet-paste-upload-btn" class="auth-switch-btn">📎 Stattdessen .txt-Datei hochladen</button>
+        </div>
+        <input type="file" id="infosheet-paste-file-input" accept=".txt,text/plain" hidden>
         <div class="infosheet-editor-divider"></div>
 
         <label class="infosheet-field-label" for="infosheet-trigger">Trigger</label>
