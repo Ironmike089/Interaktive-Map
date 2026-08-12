@@ -1246,16 +1246,18 @@ function buildOutreachEmail(d) {
   const body = [
     "Guten Tag [Name],",
     "",
-    `im Rahmen unserer Marktbeobachtung sind wir auf ${orgLabel} aufmerksam geworden und haben ${points.length > 1 ? "zwei Punkte" : "einen Punkt"} notiert, die aus unserer Sicht aktuell relevant für Ihre Praxis sein könnten:`,
+    `im Rahmen unserer Marktbeobachtung sind wir auf Ihre ${orgLabel} aufmerksam geworden und haben ${points.length > 1 ? "zwei Punkte" : "einen Punkt"} notiert, die aus unserer Sicht aktuell relevant für Ihre Praxis sein könnten:`,
     "",
     pointsBlock,
     "",
     "Gerne ordnen wir das in einem kurzen, unverbindlichen Gespräch für Sie ein — oder Sie lassen uns kurz wissen, falls das Thema aktuell keine Priorität hat.",
     "",
+    "[1-2 Sätze: was MediPulse macht und wie es dabei helfen könnte]",
+    "",
     "Einen kurzen Überblick über MediPulse finden Sie hier: https://www.medipulse.de",
     "",
     "Viele Grüße",
-    "[Ihr Name]",
+    currentUser || "[Ihr Name]",
     "MediPulse",
   ].join("\n");
   return { subject, body };
