@@ -36,17 +36,9 @@ html, body {
 
 .brand {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
   white-space: nowrap;
-}
-.brand-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--accent);
-  display: inline-block;
-  box-shadow: 0 0 12px var(--accent);
 }
 .brand-name { font-weight: 700; font-size: 18px; }
 .brand-sub { color: var(--text-dim); font-size: 13px; }
@@ -283,17 +275,37 @@ html, body {
   margin: 10px 0 4px;
 }
 .stat-chart-total { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.stat-chart-delta { font-size: 12px; font-weight: 700; }
-.stat-chart-delta.up { color: var(--c-kunde); }
-.stat-chart-delta.down { color: #e74c3c; }
+.stat-chart-delta {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+}
+.stat-chart-delta:empty { padding: 0; }
+.stat-chart-delta.up { color: var(--c-kunde); background: rgba(46, 204, 113, 0.15); }
+.stat-chart-delta.down { color: #e74c3c; background: rgba(231, 76, 60, 0.15); }
 .stat-chart-sub { font-size: 11.5px; color: var(--text-dim); width: 100%; }
 
 .stat-chart-wrap { width: 100%; margin: 6px 0 4px; }
 .stat-chart-svg { width: 100%; height: 130px; display: block; overflow: visible; }
+.stat-bar-track { fill: var(--border); opacity: 0.6; }
 .stat-bar {
-  fill: var(--accent);
+  fill: url(#statBarGrad);
   transition: y 0.5s cubic-bezier(0.22, 1.3, 0.4, 1), height 0.5s cubic-bezier(0.22, 1.3, 0.4, 1);
 }
+.stat-bar-grad-top { stop-color: var(--accent); stop-opacity: 1; }
+.stat-bar-grad-bottom { stop-color: var(--accent); stop-opacity: 0.45; }
+.stat-bar-value {
+  fill: var(--text);
+  font-size: 8px;
+  font-weight: 700;
+  font-family: inherit;
+  opacity: 0;
+  transition: y 0.5s cubic-bezier(0.22, 1.3, 0.4, 1), opacity 0.3s ease;
+}
+.stat-bar-value.visible { opacity: 1; }
 .stat-bar-label { font-size: 6.5px; fill: var(--text-dim); font-family: inherit; }
 
 .stat-notes-title { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); margin: 12px 0 6px; }
@@ -409,7 +421,11 @@ html, body {
   font-size: 13px;
   animation: flame-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.ranking-value { flex-shrink: 0; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 30px; text-align: right; }
+.ranking-value-col { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; min-width: 30px; }
+.ranking-value { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.ranking-trend { font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 999px; white-space: nowrap; }
+.ranking-trend.up { color: var(--c-kunde); background: rgba(46, 204, 113, 0.15); }
+.ranking-trend.down { color: #e74c3c; background: rgba(231, 76, 60, 0.15); }
 
 .note-editor-body { display: flex; flex-direction: column; gap: 10px; margin-top: 2px; }
 .note-editor-textarea {

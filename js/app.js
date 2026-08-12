@@ -2500,14 +2500,31 @@ function renderStatsChart(history) {
   const max = Math.max(1, ...values);
   const W = 300;
   const H = 130;
-  const gap = 3;
+  const gap = 5;
   const barW = (W - gap * (values.length - 1)) / values.length;
+  const top = 16;
   const baseline = H - 20;
+  const trackHeight = baseline - top;
+  const tracks = values
+    .map((v, i) => {
+      const x = (i * (barW + gap)).toFixed(1);
+      return `<rect class="stat-bar-track" x="${x}" y="${top}" width="${barW.toFixed(1)}" height="${trackHeight}" rx="4"></rect>`;
+    })
+    .join("");
   const bars = values
     .map((v, i) => {
-      const h = Math.round((v / max) * (baseline - 6));
+      const h = Math.round((v / max) * trackHeight);
       const x = (i * (barW + gap)).toFixed(1);
-      return `<rect class="stat-bar" x="${x}" y="${baseline}" width="${barW.toFixed(1)}" height="0" rx="2.5" data-y="${(baseline - h).toFixed(1)}" data-h="${h}"><title>${v}</title></rect>`;
+      return `<rect class="stat-bar" x="${x}" y="${baseline}" width="${barW.toFixed(1)}" height="0" rx="4" data-y="${(baseline - h).toFixed(1)}" data-h="${h}"><title>${v}</title></rect>`;
+    })
+    .join("");
+  const valueLabels = values
+    .map((v, i) => {
+      if (!v) return "";
+      const h = Math.round((v / max) * trackHeight);
+      const x = (i * (barW + gap) + barW / 2).toFixed(1);
+      const y = (baseline - h - 4).toFixed(1);
+      return `<text class="stat-bar-value" data-y="${y}" x="${x}" y="${baseline}" text-anchor="middle">${v}</text>`;
     })
     .join("");
   const labels = buckets
@@ -2516,13 +2533,27 @@ function renderStatsChart(history) {
       return `<text class="stat-bar-label" x="${x}" y="${H - 6}" text-anchor="middle">${escapeHtml(b.label)}</text>`;
     })
     .join("");
-  wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" class="stat-chart-svg" preserveAspectRatio="none">${bars}${labels}</svg>`;
+  wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" class="stat-chart-svg" preserveAspectRatio="none">
+    <defs>
+      <linearGradient id="statBarGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" class="stat-bar-grad-top"></stop>
+        <stop offset="100%" class="stat-bar-grad-bottom"></stop>
+      </linearGradient>
+    </defs>
+    ${tracks}${bars}${valueLabels}${labels}
+  </svg>`;
   requestAnimationFrame(() => {
     wrap.querySelectorAll(".stat-bar").forEach((rect, i) => {
       setTimeout(() => {
         rect.setAttribute("y", rect.dataset.y);
         rect.setAttribute("height", rect.dataset.h);
       }, i * 22);
+    });
+    wrap.querySelectorAll(".stat-bar-value").forEach((text, i) => {
+      setTimeout(() => {
+        text.setAttribute("y", text.dataset.y);
+        text.classList.add("visible");
+      }, i * 22 + 150);
     });
   });
 }
@@ -2532,14 +2563,25 @@ function renderStatsChart(history) {
 // nur lokal in diesem Browser existieren, zeigt das Ranking nur dann
 // mehrere Personen, wenn mehrere Kolleg:innen dasselbe Gerät nutzen —
 // bei je eigenem Laptop sieht jede:r vorerst nur sich selbst.
+function rankingTrendHtml(total, prevTotal) {
+  if (prevTotal > 0) {
+    const pct = Math.round(((total - prevTotal) / prevTotal) * 100);
+    return `<span class="ranking-trend ${pct >= 0 ? "up" : "down"}">${pct >= 0 ? "▲" : "▼"} ${Math.abs(pct)}%</span>`;
+  }
+  if (total > 0) return `<span class="ranking-trend up">▲ neu</span>`;
+  return "";
+}
+
 function renderRankingsView(body) {
   const users = loadUsers().map((u) => u.name);
   const buckets = buildBuckets(statsRange, 0);
+  const prevBuckets = buildBuckets(statsRange, 1);
   const totals = users
     .map((user) => {
       const stats = loadStats(user);
       const total = buckets.reduce((sum, b) => sum + bucketValue(stats.history, b, statsMetric), 0);
-      return { user, total };
+      const prevTotal = prevBuckets.reduce((sum, b) => sum + bucketValue(stats.history, b, statsMetric), 0);
+      return { user, total, prevTotal };
     })
     .sort((a, b) => b.total - a.total);
 
@@ -2570,7 +2612,10 @@ function renderRankingsView(body) {
             <div class="ranking-bar-fill ${isLeader ? "leader" : ""}" data-pct="${pct}"></div>
           </div>
         </div>
-        <div class="ranking-value">${t.total.toLocaleString("de-DE")}</div>
+        <div class="ranking-value-col">
+          <div class="ranking-value">${t.total.toLocaleString("de-DE")}</div>
+          ${rankingTrendHtml(t.total, t.prevTotal)}
+        </div>
       </div>`;
     })
     .join("");
