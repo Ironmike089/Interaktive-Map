@@ -1,6 +1,6 @@
 ---
 name: medipulse-infosheet
-description: Recherchiert eine Arztpraxis, ein MVZ oder eine Praxisklinik (Name, Adresse/Stadt, Fachrichtung, ggf. Website) über eine echte Websuche und erstellt daraus ein fertiges MediPulse-Infosheet zum Reinkopieren in die MediPulse-App (Felder Trigger, Was die Praxis verkauft, Firmografie, Struktur, Produkt, Der Aufhänger). Nutze diesen Skill IMMER, wenn jemand aus dem MediPulse-Vertriebsteam eine Praxis/ein MVZ recherchiert haben möchte oder ein Infosheet braucht — auch wenn die Worte "Skill" oder "Infosheet" nicht fallen, z.B. bei "kannst du mir was zu [Praxisname] raussuchen", "recherchier mal die MVZ XY in Aachen", "was für Trigger gibt's bei einer Kieferorthopädie-Praxis gerade", "brauch nen Aufhänger für die Praxisklinik in Bamberg".
+description: Recherchiert eine Arztpraxis, ein MVZ oder eine Praxisklinik (Name, Adresse/Stadt, Fachrichtung, ggf. Website) über eine echte Websuche und erstellt daraus ein fertiges MediPulse-Infosheet zum Reinkopieren in die MediPulse-App (Felder Trigger, Was die Praxis verkauft, Firmografie, Struktur, Produkt, Größte Painpoints). Nutze diesen Skill IMMER, wenn jemand aus dem MediPulse-Vertriebsteam eine Praxis/ein MVZ recherchiert haben möchte oder ein Infosheet braucht — auch wenn die Worte "Skill" oder "Infosheet" nicht fallen, z.B. bei "kannst du mir was zu [Praxisname] raussuchen", "recherchier mal die MVZ XY in Aachen", "was für Trigger gibt's bei einer Kieferorthopädie-Praxis gerade", "brauch die größten Painpoints für die Praxisklinik in Bamberg".
 ---
 
 # MediPulse Infosheet-Recherche
@@ -10,8 +10,9 @@ description: Recherchiert eine Arztpraxis, ein MVZ oder eine Praxisklinik (Name,
 MediPulse-Vertriebsmitarbeiter:innen sprechen Arztpraxen und MVZ kalt an.
 Ein gutes Infosheet gibt ihnen einen sachlich fundierten, nicht plumpen
 Gesprächseinstieg: Was macht diese Praxis, was hat sich in ihrem Umfeld
-gerade geändert, und welche 1-3 Vermutungen sind daraus ein legitimer
-Gesprächsaufhänger. Das Infosheet landet direkt in der "Infothek" der
+gerade geändert, und was sind die 2 größten Painpoints, die sich daraus
+als legitime Vermutung für diese Praxis ableiten lassen. Das Infosheet
+landet direkt in der "Infothek" der
 Praxis in der MediPulse-App (echte Karte oder Globus-Ansicht) und wird von
 dort auch als PDF exportiert.
 
@@ -72,12 +73,13 @@ insgesamt. Deshalb:
 - **Findest du zu einem Feld nichts Verlässliches, lass es leer** statt
   etwas Plausibles zu raten. Ein leeres Feld ist im Editor der App völlig
   normal und fällt nicht negativ auf — eine falsche Angabe schon.
-- **Die Thesen in "Der Aufhänger" sind ausdrücklich Vermutungen**, keine
-  Tatsachenbehauptungen. Formuliere sie entsprechend vorsichtig
-  ("vermutlich", "wir vermuten", "das legt nahe, dass …") und mach an der
-  Ausgabe deutlich, dass es sich um Gesprächseinstiege handelt, die sich
-  im Gespräch bestätigen oder erledigen können — nicht um recherchierte
-  Fakten.
+- **Die "Größten Painpoints" sind ausdrücklich Vermutungen**, keine
+  Tatsachenbehauptungen — auch wenn "Painpoint" konkreter klingt als
+  "These", ändert das nichts daran, dass es unbelegte Annahmen über die
+  Praxis sind. Formuliere sie entsprechend vorsichtig ("vermutlich", "wir
+  vermuten", "das legt nahe, dass …") und mach an der Ausgabe deutlich,
+  dass es sich um Gesprächseinstiege handelt, die sich im Gespräch
+  bestätigen oder erledigen können — nicht um recherchierte Fakten.
 
 ### 4. Ausgabeformat
 
@@ -101,10 +103,9 @@ App hat exakt diese sechs Felder):
 **Produkt:**
 [Leistungen, Statistiken, Besonderheiten — oder leer lassen]
 
-**Der Aufhänger:**
-1. [These 1]
-2. [optional: These 2]
-3. [optional: These 3]
+**Größte Painpoints:**
+1. [Größter Painpoint 1 — oder leer lassen, wenn nicht belegbar]
+2. [Größter Painpoint 2 — oder leer lassen, wenn nicht belegbar]
 ```
 
 Nach den sechs Feldern kurz erklären, wie es weitergeht: die Blöcke lassen
@@ -159,8 +160,8 @@ erkennbar demselben Corporate Design folgen.
 ### 6. Immer zusätzlich eine .txt-Datei mit demselben Text ausgeben
 
 Speichere den kompletten Ausgabetext aus Schritt 4 (die sechs Blöcke,
-also von `**Trigger:**` bis zum Ende von `**Der Aufhänger:**`, wahlweise
-mit den Quellen darunter) zusätzlich unverändert als `.txt`-Datei und
+also von `**Trigger:**` bis zum Ende von `**Größte Painpoints:**`,
+wahlweise mit den Quellen darunter) zusätzlich unverändert als `.txt`-Datei und
 sende sie zusammen mit der PDF. Die App hat in der Infothek/im
 Infosheet-Editor ein Datei-Upload-Feld, das genau dieses Format erkennt
 (dieselben `**Feldname:**`-Überschriften wie im Ausgabeformat oben) und
@@ -204,7 +205,7 @@ Labordiagnostik als zentrale Versorgungseinheit.
 Laborleistungen und Blutprodukte für Klinikum und angeschlossene Praxen
 im MVZ-Verbund.
 
-**Der Aufhänger:**
+**Größte Painpoints:**
 1. Die Absenkung der Basislabor-Mindestquote auf 85 % trifft die
    Vergütung direkt — vermutlich zeigt sich das zuerst in den
    Sammelabrechnungen mit den Zuweiser-Praxen.

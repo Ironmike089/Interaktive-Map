@@ -799,7 +799,7 @@ function deleteInfosheet(doctorId) {
 // AOK-Basisdaten ist damit direkt in der Infothek als PDF vorhanden) statt
 // erst ein leeres Formular zu zeigen. Ist eine Gemini-Worker-URL in den
 // Einstellungen hinterlegt, wird währenddessen automatisch recherchiert und
-// Trigger/Firmografie/Struktur/Produkt/Aufhänger gleich mit befüllt; ohne
+// Trigger/Firmografie/Struktur/Produkt/Painpoints gleich mit befüllt; ohne
 // URL (oder bei einem Fehler) bleibt es beim Steckbrief-Infosheet — die
 // recherchierten Zusatzfelder lassen sich danach jederzeit über
 // "Bearbeiten" von Hand ergänzen.
@@ -908,7 +908,7 @@ async function createInfosheet(d) {
       firmografie: r.firmografie || "",
       struktur: r.struktur || "",
       produkt: r.produkt || "",
-      aufhaenger: Array.isArray(r.aufhaenger) ? r.aufhaenger.slice(0, 3) : [],
+      aufhaenger: Array.isArray(r.aufhaenger) ? r.aufhaenger.slice(0, 2) : [],
     });
   } catch (err) {
     console.warn("Gemini-Recherche fehlgeschlagen, Infosheet nur mit Steckbrief gespeichert:", err);
@@ -1025,7 +1025,7 @@ function buildInfosheetPdf(d, sheet) {
 
   // Steckbrief aus den vorhandenen AOK-Basisdaten (nicht nur die
   // manuell recherchierten Felder) — macht das Infosheet auch ohne
-  // ausgefüllte Trigger/Aufhänger-Felder informativ.
+  // ausgefüllte Trigger/Painpoints-Felder informativ.
   const factRows = [];
   if (d.einrichtung) factRows.push(["Einrichtung", d.einrichtung + (d.kette ? ` (Teil von ${d.kette})` : "")]);
   factRows.push(["Adresse", `${d.strasse || ""}, ${d.plz || ""} ${d.stadt || ""}`.trim()]);
@@ -1077,7 +1077,7 @@ function buildInfosheetPdf(d, sheet) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.setTextColor(...PDF_ACCENT);
-    doc.text("DER AUFHÄNGER", marginX, y);
+    doc.text("GRÖSSTE PAINPOINTS", marginX, y);
     y += 5.5;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10.5);
@@ -1150,7 +1150,7 @@ function renderInfosheetContent(sheet) {
   const theses = (sheet.aufhaenger || []).filter((t) => t && t.trim());
   if (theses.length) {
     rows.push(
-      `<div class="infosheet-section"><div class="infosheet-label">Der Aufhänger</div>${theses
+      `<div class="infosheet-section"><div class="infosheet-label">Größte Painpoints</div>${theses
         .map((t, i) => `<div class="infosheet-thesis">${i + 1}. ${escapeHtml(t)}</div>`)
         .join("")}</div>`
     );
@@ -1221,19 +1221,16 @@ function infothekHtml(d) {
 }
 
 // --- Automatisierte Erstansprache-E-Mail ---
-// Holt sich die 1-2 "Issues" für die Praxis aus dem Infosheet (Trigger +
-// Aufhänger-Thesen), falls eins existiert. Name oben (Anrede) und unten
-// (Unterschrift) bleiben bewusst Platzhalter: die Anrede könnte sonst das
-// falsche Geschlecht/Titel treffen (unsere Daten enthalten keine
-// verlässliche Anrede-Information), und wer die Mail tatsächlich
-// verschickt, soll die App nicht raten.
+// Holt sich die 2 größten Painpoints der Praxis aus dem Infosheet, falls
+// eins existiert. Name oben (Anrede) und unten (Unterschrift) bleiben
+// bewusst Platzhalter: die Anrede könnte sonst das falsche Geschlecht/
+// Titel treffen (unsere Daten enthalten keine verlässliche Anrede-
+// Information), und wer die Mail tatsächlich verschickt, soll die App
+// nicht raten.
 function emailIssuePoints(d) {
   const sheet = getInfosheet(d.id);
   if (!sheet) return [];
-  const points = [];
-  if (sheet.trigger) points.push(sheet.trigger);
-  (sheet.aufhaenger || []).filter((t) => t && t.trim()).forEach((t) => points.push(t));
-  return points.slice(0, 2);
+  return (sheet.aufhaenger || []).filter((t) => t && t.trim()).slice(0, 2);
 }
 
 function buildOutreachEmail(d) {
@@ -1241,12 +1238,12 @@ function buildOutreachEmail(d) {
   const points = emailIssuePoints(d);
   const pointsBlock = points.length
     ? points.map((p, i) => `${i + 1}. ${p}`).join("\n")
-    : "[Hier 1-2 Punkte aus der Infothek einfügen]";
+    : "[Hier die größten Painpoints aus der Infothek einfügen]";
   const subject = `Kurze Einschätzung zu ${orgLabel}`;
   const body = [
     "Guten Tag [Name],",
     "",
-    `im Rahmen unserer Marktbeobachtung sind wir auf Ihre ${orgLabel} aufmerksam geworden und haben ${points.length > 1 ? "zwei Punkte" : "einen Punkt"} notiert, die aus unserer Sicht aktuell relevant für Ihre Praxis sein könnten:`,
+    `im Rahmen unserer Marktbeobachtung sind wir auf Ihre ${orgLabel} aufmerksam geworden und haben ${points.length > 1 ? "zwei Painpoints" : "einen Painpoint"} identifiziert, die aus unserer Sicht aktuell auf Ihre Praxis zutreffen könnten:`,
     "",
     pointsBlock,
     "",
@@ -1337,16 +1334,21 @@ function refreshPopupFor(doctorId) {
 
 // Der medipulse-infosheet-Skill gibt seine Recherche immer nach demselben
 // Schema aus (**Trigger:**, **Was die Praxis verkauft:**, **Firmografie:**,
-// **Struktur:**, **Produkt:**, **Der Aufhänger:**). Weil das Format fest
-// ist, lässt sich der komplette Skill-Text hier einfach einfügen, statt
-// jedes Feld einzeln von Hand zu übertragen — die Überschriften werden
-// erkannt und der jeweilige Absatz landet automatisch im passenden Feld.
+// **Struktur:**, **Produkt:**, **Größte Painpoints:**). Weil das Format
+// fest ist, lässt sich der komplette Skill-Text hier einfach einfügen,
+// statt jedes Feld einzeln von Hand zu übertragen — die Überschriften
+// werden erkannt und der jeweilige Absatz landet automatisch im
+// passenden Feld. Die alten "Aufhänger"-Überschriften werden zusätzlich
+// erkannt, damit älterer Skill-Text weiterhin funktioniert.
 const INFOSHEET_PASTE_HEADERS = {
   trigger: "trigger",
   "was die praxis verkauft": "verkauft",
   firmografie: "firmografie",
   struktur: "struktur",
   produkt: "produkt",
+  "größte painpoints": "aufhaenger",
+  "die größten painpoints": "aufhaenger",
+  painpoints: "aufhaenger",
   "der aufhänger": "aufhaenger",
   aufhänger: "aufhaenger",
 };
@@ -1384,7 +1386,7 @@ function parseInfosheetText(raw) {
     .split(/\r?\n/)
     .map((l) => l.replace(/^\d+\.\s*/, "").trim())
     .filter(Boolean)
-    .slice(0, 3);
+    .slice(0, 2);
   return {
     trigger: joined("trigger"),
     verkauft: joined("verkauft"),
@@ -1406,7 +1408,6 @@ function applyInfosheetPasteText() {
   document.getElementById("infosheet-produkt").value = parsed.produkt;
   document.getElementById("infosheet-these-1").value = parsed.aufhaenger[0] || "";
   document.getElementById("infosheet-these-2").value = parsed.aufhaenger[1] || "";
-  document.getElementById("infosheet-these-3").value = parsed.aufhaenger[2] || "";
 }
 document.getElementById("infosheet-paste-apply").addEventListener("click", applyInfosheetPasteText);
 document.getElementById("infosheet-paste-all").addEventListener("paste", () => {
@@ -1438,7 +1439,6 @@ function openInfosheetEditor(d) {
   const theses = sheet.aufhaenger || [];
   document.getElementById("infosheet-these-1").value = theses[0] || "";
   document.getElementById("infosheet-these-2").value = theses[1] || "";
-  document.getElementById("infosheet-these-3").value = theses[2] || "";
   document.getElementById("infosheet-editor-backdrop").hidden = false;
 }
 function closeInfosheetEditor() {
@@ -1465,7 +1465,6 @@ document.getElementById("infosheet-editor-save").addEventListener("click", () =>
     aufhaenger: [
       document.getElementById("infosheet-these-1").value.trim(),
       document.getElementById("infosheet-these-2").value.trim(),
-      document.getElementById("infosheet-these-3").value.trim(),
     ],
   };
   saveInfosheet(infosheetEditingDoctorId, sheet);
@@ -2007,7 +2006,7 @@ document.addEventListener("click", (e) => {
   }
   const reresearchBtn = e.target.closest(".infosheet-reresearch-btn");
   if (reresearchBtn && currentPopupDoctor) {
-    if (confirm("Das überschreibt Trigger, Firmografie, Struktur, Produkt und Aufhänger mit einer neuen Recherche. Fortfahren?")) {
+    if (confirm("Das überschreibt Trigger, Firmografie, Struktur, Produkt und die Painpoints mit einer neuen Recherche. Fortfahren?")) {
       infothekExpandedFor = currentPopupDoctor.id;
       createInfosheet(currentPopupDoctor);
     }

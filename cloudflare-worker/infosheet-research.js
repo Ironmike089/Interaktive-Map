@@ -38,7 +38,7 @@ Antworte AUSSCHLIESSLICH mit einem JSON-Objekt (kein Markdown, kein Codeblock, k
   "firmografie": "Rechtsträger, Adresse, Ansprechpartner — nur was öffentlich auffindbar ist",
   "struktur": "Team- bzw. Organisationsstruktur — nur was öffentlich auffindbar ist",
   "produkt": "Leistungen, Statistiken, Besonderheiten — nur was öffentlich auffindbar ist",
-  "aufhaenger": ["These 1", "These 2", "optional: These 3"]
+  "aufhaenger": ["Größter Painpoint 1 der Praxis", "Größter Painpoint 2 der Praxis"]
 }
 
 Einrichtung: ${d.einrichtung || d.name}
@@ -48,7 +48,7 @@ Website (falls bekannt): ${d.website || "keine bekannt"}
 
 Wichtig:
 - Behaupte nichts, das du nicht über die Suche belegen kannst.
-- Formuliere die Thesen in "aufhaenger" vorsichtig als Vermutung ("vermutlich", "wir vermuten").
+- "aufhaenger" sind genau die 2 größten Painpoints, die diese Praxis/Einrichtung vermutlich aktuell hat — formuliere sie vorsichtig als Vermutung ("vermutlich", "wir vermuten"), nicht als recherchierte Tatsache.
 - Findest du zu einem Feld nichts Verlässliches, lasse es leer ("" bzw. []).
 - Nichts zur medizinischen Seite (Indikation, Behandlungsqualität) behaupten.
 - Antworte NUR mit dem JSON-Objekt.`;
