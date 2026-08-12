@@ -1333,11 +1333,90 @@ function refreshPopupFor(doctorId) {
   }
 }
 
+// Der medipulse-infosheet-Skill gibt seine Recherche immer nach demselben
+// Schema aus (**Trigger:**, **Was die Praxis verkauft:**, **Firmografie:**,
+// **Struktur:**, **Produkt:**, **Der Aufhänger:**). Weil das Format fest
+// ist, lässt sich der komplette Skill-Text hier einfach einfügen, statt
+// jedes Feld einzeln von Hand zu übertragen — die Überschriften werden
+// erkannt und der jeweilige Absatz landet automatisch im passenden Feld.
+const INFOSHEET_PASTE_HEADERS = {
+  trigger: "trigger",
+  "was die praxis verkauft": "verkauft",
+  firmografie: "firmografie",
+  struktur: "struktur",
+  produkt: "produkt",
+  "der aufhänger": "aufhaenger",
+  aufhänger: "aufhaenger",
+};
+const INFOSHEET_PASTE_STOP_HEADERS = ["quellen", "quelle"];
+
+function normalizeInfosheetHeaderLine(line) {
+  return line
+    .trim()
+    .replace(/^\*+/, "")
+    .replace(/\*+$/, "")
+    .replace(/:$/, "")
+    .trim()
+    .toLowerCase();
+}
+
+function parseInfosheetText(raw) {
+  const sections = { trigger: [], verkauft: [], firmografie: [], struktur: [], produkt: [], aufhaenger: [] };
+  let current = null;
+  String(raw || "")
+    .split(/\r?\n/)
+    .forEach((line) => {
+      const norm = normalizeInfosheetHeaderLine(line);
+      if (INFOSHEET_PASTE_HEADERS[norm]) {
+        current = INFOSHEET_PASTE_HEADERS[norm];
+        return;
+      }
+      if (INFOSHEET_PASTE_STOP_HEADERS.some((h) => norm.startsWith(h))) {
+        current = null;
+        return;
+      }
+      if (current) sections[current].push(line);
+    });
+  const joined = (key) => sections[key].join("\n").trim();
+  const theses = joined("aufhaenger")
+    .split(/\r?\n/)
+    .map((l) => l.replace(/^\d+\.\s*/, "").trim())
+    .filter(Boolean)
+    .slice(0, 3);
+  return {
+    trigger: joined("trigger"),
+    verkauft: joined("verkauft"),
+    firmografie: joined("firmografie"),
+    struktur: joined("struktur"),
+    produkt: joined("produkt"),
+    aufhaenger: theses,
+  };
+}
+
+function applyInfosheetPasteText() {
+  const raw = document.getElementById("infosheet-paste-all").value;
+  if (!raw.trim()) return;
+  const parsed = parseInfosheetText(raw);
+  document.getElementById("infosheet-trigger").value = parsed.trigger;
+  document.getElementById("infosheet-verkauft").value = parsed.verkauft;
+  document.getElementById("infosheet-firmografie").value = parsed.firmografie;
+  document.getElementById("infosheet-struktur").value = parsed.struktur;
+  document.getElementById("infosheet-produkt").value = parsed.produkt;
+  document.getElementById("infosheet-these-1").value = parsed.aufhaenger[0] || "";
+  document.getElementById("infosheet-these-2").value = parsed.aufhaenger[1] || "";
+  document.getElementById("infosheet-these-3").value = parsed.aufhaenger[2] || "";
+}
+document.getElementById("infosheet-paste-apply").addEventListener("click", applyInfosheetPasteText);
+document.getElementById("infosheet-paste-all").addEventListener("paste", () => {
+  setTimeout(applyInfosheetPasteText, 0);
+});
+
 let infosheetEditingDoctorId = null;
 function openInfosheetEditor(d) {
   infosheetEditingDoctorId = d.id;
   const sheet = getInfosheet(d.id) || {};
   document.getElementById("infosheet-editor-title").textContent = `Infosheet: ${d.name}`;
+  document.getElementById("infosheet-paste-all").value = "";
   document.getElementById("infosheet-trigger").value = sheet.trigger || "";
   document.getElementById("infosheet-verkauft").value = sheet.verkauft || "";
   document.getElementById("infosheet-firmografie").value = sheet.firmografie || "";
