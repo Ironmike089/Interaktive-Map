@@ -685,6 +685,18 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
   background: rgba(46, 204, 113, 0.12); color: var(--s-kunde); font-family: inherit;
 }
 .popup-make-kunde-btn:hover { background: rgba(46, 204, 113, 0.22); }
+.list-unmake-kunde-btn {
+  display: block; width: 100%; margin-top: 6px; padding: 5px 8px; border-radius: 6px;
+  font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid var(--border-solid);
+  background: var(--surface-2); color: var(--text-dim); font-family: "IBM Plex Mono", monospace;
+}
+.list-unmake-kunde-btn:hover { background: var(--border-solid); color: var(--text); }
+.popup-unmake-kunde-btn {
+  display: block; width: 100%; margin: 0 0 14px; padding: 8px 6px; border-radius: 9px;
+  font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border-solid);
+  background: var(--surface-2); color: var(--text-dim); font-family: inherit;
+}
+.popup-unmake-kunde-btn:hover { background: var(--border-solid); color: var(--text); }
 .detail-grid { display: flex; flex-direction: column; gap: 10px; margin: 0 0 14px; }
 .detail-grid dt { font-family: "IBM Plex Mono", monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 2px; }
 .detail-grid dd { margin: 0; font-size: 13px; }
@@ -972,6 +984,7 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
       </div>
       <div class="earnings-row" id="d-earnings"></div>
       <button type="button" class="popup-make-kunde-btn" id="d-make-kunde-btn" hidden>→ Zum Kunden machen</button>
+      <button type="button" class="popup-unmake-kunde-btn" id="d-unmake-kunde-btn" hidden>↩ Kein Kunde mehr</button>
       <div class="connections-row" id="d-connections" hidden></div>
       <dl class="detail-grid">
         <div><dt>Adresse</dt><dd id="d-address"></dd></div>
@@ -1083,16 +1096,33 @@ function saveStatusOverrides(overrides) {
 function applyStatusOverrides(data) {
   const overrides = getStatusOverrides();
   data.forEach((d) => {
-    if (overrides[d.id]) d.status = overrides[d.id];
+    const ov = overrides[d.id];
+    if (!ov) return;
+    // Ältere Overrides wurden als reiner String ("kunde") gespeichert, bevor
+    // "Kein Kunde mehr" dazukam — beide Formen bleiben lesbar.
+    d.status = typeof ov === "string" ? ov : ov.status;
   });
 }
 function markDoctorAsKunde(d) {
   if (d.status === "kunde") return;
-  d.status = "kunde";
   const overrides = getStatusOverrides();
-  overrides[d.id] = "kunde";
+  overrides[d.id] = { status: "kunde", revertTo: d.status };
   saveStatusOverrides(overrides);
+  d.status = "kunde";
   bumpStat("kunden", 1);
+  updateStats();
+  renderList();
+  if (currentDetailDoctor && currentDetailDoctor.id === d.id) showDetail(d);
+}
+function unmarkDoctorAsKunde(d) {
+  if (d.status !== "kunde") return;
+  const overrides = getStatusOverrides();
+  const prev = overrides[d.id];
+  const revertTo = (prev && typeof prev === "object" && prev.revertTo) || "interessent";
+  overrides[d.id] = { status: revertTo };
+  saveStatusOverrides(overrides);
+  d.status = revertTo;
+  bumpStat("kunden", -1);
   updateStats();
   renderList();
   if (currentDetailDoctor && currentDetailDoctor.id === d.id) showDetail(d);
@@ -1777,7 +1807,7 @@ function renderList() {
       ${d.einrichtung ? `<div class="li-meta li-einrichtung">${esc(d.einrichtung)}</div>` : ""}
       ${
         d.status === "kunde"
-          ? ""
+          ? `<button type="button" class="list-unmake-kunde-btn" data-id="${d.id}">↩ Kein Kunde mehr</button>`
           : `<div class="li-meta li-earnings">💰 ${((d.groesse || 1) * gewinnProArzt).toLocaleString("de-DE")} € möglich</div>
              <button type="button" class="list-make-kunde-btn" data-id="${d.id}">→ Zum Kunden machen</button>`
       }
@@ -1801,6 +1831,14 @@ function renderList() {
         e.stopPropagation();
         const d = AERZTE_DATA.find((x) => x.id === Number(makeKundeBtn.dataset.id));
         if (d) markDoctorAsKunde(d);
+      });
+    }
+    const unmakeKundeBtn = li.querySelector(".list-unmake-kunde-btn");
+    if (unmakeKundeBtn) {
+      unmakeKundeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const d = AERZTE_DATA.find((x) => x.id === Number(unmakeKundeBtn.dataset.id));
+        if (d) unmarkDoctorAsKunde(d);
       });
     }
   });
@@ -2519,14 +2557,18 @@ function showDetail(d) {
 
   const earningsEl = document.getElementById("d-earnings");
   const makeKundeBtn = document.getElementById("d-make-kunde-btn");
+  const unmakeKundeBtn = document.getElementById("d-unmake-kunde-btn");
   if (d.status === "kunde") {
     earningsEl.hidden = true;
     makeKundeBtn.hidden = true;
+    unmakeKundeBtn.hidden = false;
+    unmakeKundeBtn.dataset.id = d.id;
   } else {
     earningsEl.hidden = false;
     earningsEl.textContent = `💰 ${((d.groesse || 1) * gewinnProArzt).toLocaleString("de-DE")} € möglicher Umsatz`;
     makeKundeBtn.hidden = false;
     makeKundeBtn.dataset.id = d.id;
+    unmakeKundeBtn.hidden = true;
   }
 
   const connRow = document.getElementById("d-connections");
@@ -2598,6 +2640,9 @@ document.getElementById("notif-close").addEventListener("click", () => {
 });
 document.getElementById("d-make-kunde-btn").addEventListener("click", () => {
   if (currentDetailDoctor) markDoctorAsKunde(currentDetailDoctor);
+});
+document.getElementById("d-unmake-kunde-btn").addEventListener("click", () => {
+  if (currentDetailDoctor) unmarkDoctorAsKunde(currentDetailDoctor);
 });
 document.addEventListener("click", (e) => {
   // composedPath() statt e.target: Klicks, die das Panel per innerHTML

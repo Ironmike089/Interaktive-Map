@@ -1190,6 +1190,37 @@ html, body {
 }
 .popup-make-kunde-btn:hover { background: rgba(46, 204, 113, 0.22); }
 
+.doctor-unmake-kunde-btn {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text-dim);
+}
+.doctor-unmake-kunde-btn:hover { background: var(--border); color: var(--text); }
+
+.popup-unmake-kunde-btn {
+  display: block;
+  width: 100%;
+  margin: 4px 0 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text-dim);
+  font-family: inherit;
+}
+.popup-unmake-kunde-btn:hover { background: var(--border); color: var(--text); }
+
 .popup-actions { display: flex; gap: 8px; margin-top: 10px; }
 .popup-actions a, .popup-actions button {
   flex: 1;

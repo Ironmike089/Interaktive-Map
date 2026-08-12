@@ -117,16 +117,33 @@ function saveStatusOverrides(overrides) {
 function applyStatusOverrides(data) {
   const overrides = getStatusOverrides();
   data.forEach((d) => {
-    if (overrides[d.id]) d.status = overrides[d.id];
+    const ov = overrides[d.id];
+    if (!ov) return;
+    // Ältere Overrides wurden als reiner String ("kunde") gespeichert, bevor
+    // "Kein Kunde mehr" dazukam — beide Formen bleiben lesbar.
+    d.status = typeof ov === "string" ? ov : ov.status;
   });
 }
 function markDoctorAsKunde(d) {
   if (d.status === "kunde") return;
-  d.status = "kunde";
   const overrides = getStatusOverrides();
-  overrides[d.id] = "kunde";
+  overrides[d.id] = { status: "kunde", revertTo: d.status };
   saveStatusOverrides(overrides);
+  d.status = "kunde";
   bumpStat("kunden", 1);
+  updateStats();
+  renderList();
+  refreshPopupFor(d.id);
+}
+function unmarkDoctorAsKunde(d) {
+  if (d.status !== "kunde") return;
+  const overrides = getStatusOverrides();
+  const prev = overrides[d.id];
+  const revertTo = (prev && typeof prev === "object" && prev.revertTo) || "interessent";
+  overrides[d.id] = { status: revertTo };
+  saveStatusOverrides(overrides);
+  d.status = revertTo;
+  bumpStat("kunden", -1);
   updateStats();
   renderList();
   refreshPopupFor(d.id);
@@ -1423,7 +1440,11 @@ function openDoctorPopup(d, coords) {
       ${conn.total > 0 ? `<div class="popup-row connections-row">🔗 ${conn.total.toLocaleString("de-DE")} weitere Standorte der Kette ${escapeHtml(d.kette)} auf der Karte hervorgehoben${conn.total > conn.items.length ? ` (${conn.items.length} angezeigt)` : ""}</div>` : ""}
       ${sizeGaugeHtml(d.groesse)}
       ${earningsRowHtml(d)}
-      ${d.status === "kunde" ? "" : `<button type="button" class="popup-make-kunde-btn" data-id="${d.id}">→ Zum Kunden machen</button>`}
+      ${
+        d.status === "kunde"
+          ? `<button type="button" class="popup-unmake-kunde-btn" data-id="${d.id}">↩ Kein Kunde mehr</button>`
+          : `<button type="button" class="popup-make-kunde-btn" data-id="${d.id}">→ Zum Kunden machen</button>`
+      }
       <div class="popup-row">📍 ${escapeHtml(d.strasse)}, ${escapeHtml(d.plz)} ${escapeHtml(d.stadt)}</div>
       ${d.ansprechpartner && d.ansprechpartner !== d.name ? `<div class="popup-row">👤 ${escapeHtml(d.ansprechpartner)}</div>` : ""}
       ${d.telefon ? `<div class="popup-row">📞 ${escapeHtml(d.telefon)}</div>` : ""}
@@ -1652,7 +1673,7 @@ function renderList() {
       ${d.einrichtung ? `<div class="doctor-meta doctor-einrichtung">${escapeHtml(d.einrichtung)}</div>` : ""}
       ${
         d.status === "kunde"
-          ? ""
+          ? `<button type="button" class="doctor-unmake-kunde-btn" data-id="${d.id}">↩ Kein Kunde mehr</button>`
           : `<div class="doctor-meta doctor-earnings">💰 ${((d.groesse || 1) * gewinnProArzt).toLocaleString("de-DE")} € möglich</div>
              <button type="button" class="doctor-make-kunde-btn" data-id="${d.id}">→ Zum Kunden machen</button>`
       }
@@ -1663,6 +1684,13 @@ function renderList() {
       makeKundeBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         markDoctorAsKunde(d);
+      });
+    }
+    const unmakeKundeBtn = li.querySelector(".doctor-unmake-kunde-btn");
+    if (unmakeKundeBtn) {
+      unmakeKundeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        unmarkDoctorAsKunde(d);
       });
     }
     list.appendChild(li);
@@ -2130,6 +2158,10 @@ document.addEventListener("click", (e) => {
   const makeKundeBtn = e.target.closest(".popup-make-kunde-btn");
   if (makeKundeBtn && currentPopupDoctor) {
     markDoctorAsKunde(currentPopupDoctor);
+  }
+  const unmakeKundeBtn = e.target.closest(".popup-unmake-kunde-btn");
+  if (unmakeKundeBtn && currentPopupDoctor) {
+    unmarkDoctorAsKunde(currentPopupDoctor);
   }
   const emailBtn = e.target.closest(".popup-email-btn");
   if (emailBtn) {
