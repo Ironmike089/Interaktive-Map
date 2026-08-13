@@ -794,6 +794,85 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
   .note { display: none; }
   .hint { display: none; }
 }
+
+/* --- Geführte Tour / Tutorial --- */
+.tour-fab-btn {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 500;
+  background: var(--accent);
+  color: #06231f;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+.tour-fab-btn:hover { filter: brightness(1.08); }
+.tour-overlay { position: fixed; inset: 0; z-index: 20000; pointer-events: auto; }
+.tour-highlight {
+  position: fixed;
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(4, 8, 18, 0.68);
+  border: 2px solid var(--accent);
+  transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
+  pointer-events: none;
+}
+.tour-tooltip {
+  position: fixed;
+  z-index: 20002;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+  visibility: hidden;
+}
+.tour-skip-btn {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+}
+.tour-skip-btn:hover { color: var(--text); }
+.tour-step-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.tour-title { font-weight: 700; font-size: 15px; margin: 0 0 8px; padding-right: 16px; color: var(--text); }
+.tour-text { font-size: 13px; line-height: 1.55; color: var(--text); margin-bottom: 16px; white-space: pre-line; }
+.tour-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.tour-btn {
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+.tour-btn:hover { background: var(--border); }
+.tour-btn-primary { background: var(--accent); border-color: var(--accent); color: #06231f; margin-left: auto; }
+.tour-btn-primary:hover { filter: brightness(1.08); background: var(--accent); }
+.tour-btn-ghost:disabled { opacity: 0.35; cursor: default; }
+.tour-btn-ghost:disabled:hover { background: var(--surface-2); }
 </style>
 
 <div class="stage">
@@ -1084,6 +1163,21 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
       <input type="text" id="infosheet-these-2" class="auth-input" placeholder="Painpoint 2" maxlength="200" />
 
       <button type="button" id="infosheet-editor-save" class="auth-submit-btn">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<button type="button" id="tour-fab" class="tour-fab-btn">🎓 Tutorial</button>
+<div class="tour-overlay" id="tour-overlay" hidden>
+  <div class="tour-highlight" id="tour-highlight" hidden></div>
+  <div class="tour-tooltip" id="tour-tooltip">
+    <button type="button" class="tour-skip-btn" id="tour-skip-btn" title="Tour beenden">×</button>
+    <div class="tour-step-label" id="tour-step-label"></div>
+    <div class="tour-title" id="tour-title"></div>
+    <div class="tour-text" id="tour-text"></div>
+    <div class="tour-actions">
+      <button type="button" class="tour-btn tour-btn-ghost" id="tour-back-btn">Zurück</button>
+      <button type="button" class="tour-btn tour-btn-primary" id="tour-next-btn">Weiter</button>
     </div>
   </div>
 </div>
@@ -3844,4 +3938,382 @@ renderList();
 updateStats();
 updateNotificationBell();
 setInterval(updateNotificationBell, 5 * 60 * 1000);
+
+// ============================================================================
+// Geführte Tour — erklärt jede Funktion direkt an der echten Oberfläche
+// (öffnet dafür kurz die jeweiligen Panels/die Infokarte), statt in einem
+// separaten Hilfe-Dokument, das schnell veraltet und nie gelesen wird.
+// ============================================================================
+(function () {
+  const overlay = document.getElementById("tour-overlay");
+  const highlightEl = document.getElementById("tour-highlight");
+  const tooltipEl = document.getElementById("tour-tooltip");
+  const stepLabelEl = document.getElementById("tour-step-label");
+  const titleEl = document.getElementById("tour-title");
+  const textEl = document.getElementById("tour-text");
+  const backBtn = document.getElementById("tour-back-btn");
+  const nextBtn = document.getElementById("tour-next-btn");
+  const skipBtn = document.getElementById("tour-skip-btn");
+
+  let steps = [];
+  let stepIndex = 0;
+  let active = false;
+  let priorState = null;
+
+  function pickDemoDoctor() {
+    const pool = AERZTE_DATA;
+    if (!pool || !pool.length) return null;
+    return (
+      pool.find((d) => d.kette && d.telefon && d.status !== "kunde" && !getInfosheet(d.id)) ||
+      pool.find((d) => d.status !== "kunde") ||
+      pool[0]
+    );
+  }
+
+  function resolveTarget(step) {
+    if (!step.target) return null;
+    return typeof step.target === "function" ? step.target() : document.querySelector(step.target);
+  }
+
+  function ensurePanel(panelId, renderFn) {
+    closeAllOverlayPanels();
+    document.getElementById(panelId).hidden = false;
+    if (renderFn) renderFn();
+  }
+
+  function closeDemoDetail() {
+    document.getElementById("detail").hidden = true;
+    currentDetailDoctor = null;
+    if (window.__medipulse && window.__medipulse.deselectDoctor) window.__medipulse.deselectDoctor();
+  }
+
+  function ensureDemoDetail(demo, expandInfothek) {
+    if (!demo) return;
+    closeAllOverlayPanels();
+    if (expandInfothek) infothekExpandedFor = demo.id;
+    if (window.__medipulse && window.__medipulse.selectDoctor) window.__medipulse.selectDoctor(demo.id, true);
+    else showDetail(demo);
+  }
+
+  function buildSteps() {
+    const demo = pickDemoDoctor();
+    const accountText = currentUser
+      ? `Du bist aktuell als „${currentUser}“ angemeldet. Hier änderst du dein Profilbild, meldest dich ab oder löschst dein Konto komplett (das entfernt dich dann auch aus den Rankings).`
+      : `Hier meldest du dich an oder registrierst ein neues Konto — nur ein Name + Passwort, rein lokal auf diesem Gerät. Angemeldet lässt sich deine eigene Statistik führen und du erscheinst in den Rankings.`;
+
+    return [
+      {
+        target: null,
+        title: "Willkommen bei MediPulse 👋",
+        text: "Diese Tour zeigt dir Schritt für Schritt jede Funktion dieser Globus-Ansicht. Mit „Weiter“ geht's los — mit dem × oben rechts steigst du jederzeit aus.",
+      },
+      {
+        target: "#stats",
+        title: "Kennzahlen auf einen Blick",
+        before: () => closeAllOverlayPanels(),
+        text: "Live-Übersicht: wie viele Praxen insgesamt erfasst sind und wie viele davon Kunden, Interessenten oder Leads sind.",
+      },
+      {
+        target: "#notif-bell",
+        title: "Follow-up-Erinnerungen",
+        before: () => ensurePanel("notif-panel"),
+        text: "Sobald du über den E-Mail-Button in der Infokarte eine Erstansprache verschickt hast, taucht hier 24 Stunden später automatisch eine Erinnerung auf, falls noch kein Follow-up gesendet wurde — inklusive fertigem Follow-up-Text.",
+      },
+      {
+        target: "#user-badge",
+        title: "Konto",
+        before: () => ensurePanel("auth-panel", renderAuthPanel),
+        text: accountText,
+      },
+      {
+        target: "#sales-stats-toggle",
+        title: "Meine Statistik",
+        before: () => {
+          statsView = "mine";
+          ensurePanel("sales-stats-panel", renderSalesStatsPanel);
+        },
+        text: "Deine eigenen Zahlen — Anrufe, Vor-Ort-Termine, neue Kunden, E-Mails — über Tag, Woche oder Monat, inklusive Streaks für Tage in Folge mit Aktivität.",
+      },
+      {
+        target: "#sales-stats-body",
+        title: "Rankings",
+        before: () => {
+          statsView = "rankings";
+          renderSalesStatsPanel();
+        },
+        text: "Der Team-Vergleich. Wichtig: Das Ranking zeigt nur Kolleg:innen, die auf DIESEM Gerät/Browser registriert sind — bei getrennten Laptops sieht aktuell jede:r nur sich selbst.",
+      },
+      {
+        target: "#settings-toggle",
+        title: "Einstellungen",
+        before: () => ensurePanel("settings-panel"),
+        text: "Globale Anzeige-Optionen — schauen wir sie uns einzeln an.",
+      },
+      {
+        target: "#settings-rotate-toggle",
+        title: "Automatische Rotation",
+        text: "Lässt den Globus im Ruhezustand langsam von selbst weiterdrehen — praktisch als Übersichts-/Bildschirmschoner-Ansicht.",
+      },
+      {
+        target: "#settings-heatmap-toggle",
+        title: "Heatmap",
+        text: "Blendet zusätzlich eine Dichte-Heatmap ein. Direkt darunter lässt sich der Bereich einschränken: nur Kunden, nur Leads oder alle Praxen.",
+      },
+      {
+        target: "#gpa-slider",
+        title: "Gewinn pro Arzt",
+        text: "Dieser Wert (€ pro Arzt/Ärztin) fließt in die „möglicher Umsatz“-Schätzung in der Infokarte jeder Praxis ein — je nach Praxisgröße hochgerechnet.",
+      },
+      {
+        target: "#search",
+        title: "Suche",
+        before: () => closeAllOverlayPanels(),
+        text: "Volltextsuche über Name, Stadt und Fachrichtung — filtert Liste und Globus sofort.",
+      },
+      {
+        target: "#status-body",
+        title: "Filter: Status",
+        text: "Blendet Praxen nach Status ein/aus — Kunde, Interessent, Lead, Inaktiv.",
+      },
+      {
+        target: "#kategorie-body",
+        title: "Filter: Fachrichtung & MVZ",
+        text: "Filtert nach Fachrichtung — „alle“/„keine“ setzt alle Kacheln auf einmal.",
+      },
+      {
+        target: "#groesse-body",
+        title: "Filter: Praxisgröße",
+        text: "Regler + Zahlenfeld, um nur Praxen ab einer bestimmten Anzahl Ärzt:innen anzuzeigen.",
+      },
+      {
+        target: "#bundesland-body",
+        title: "Filter: Bundesland",
+        before: () => {
+          const body = document.getElementById("bundesland-body");
+          const chevron = document.querySelector('.chevron-btn[data-target="bundesland-body"]');
+          body.classList.remove("collapsed");
+          if (chevron) chevron.setAttribute("aria-expanded", "true");
+        },
+        text: "Genau wie bei der Fachrichtung, nur nach Bundesland.",
+      },
+      {
+        target: "#list",
+        title: "Praxen-Liste",
+        text: "Alle gefilterten Praxen als Liste — ein Klick lässt den Globus direkt zur Praxis drehen und öffnet ihre Infokarte.",
+      },
+      {
+        target: "#globe-canvas",
+        title: "Der Globus",
+        before: () => {
+          closeAllOverlayPanels();
+          closeDemoDetail();
+        },
+        text: "Jeder Punkt ist eine Praxis, farbcodiert nach Fachrichtung (Legende unten links). Ziehen dreht den Globus, Scrollen zoomt. Klick auf einen Punkt öffnet die Infokarte — schauen wir sie uns als Nächstes an.",
+      },
+      {
+        target: () => {
+          const makeBtn = document.getElementById("d-make-kunde-btn");
+          return makeBtn && !makeBtn.hidden ? makeBtn : document.getElementById("d-unmake-kunde-btn");
+        },
+        title: "Infokarte: Status ändern",
+        before: () => ensureDemoDetail(demo, false),
+        text: "Ein Klick macht eine Praxis direkt zum Kunden — der vorherige Status (Lead/Interessent) wird gemerkt. „Kein Kunde mehr“ macht das jederzeit wieder rückgängig.",
+      },
+      {
+        target: ".size-row",
+        title: "Praxisgröße",
+        before: () => ensureDemoDetail(demo, false),
+        text: "Zeigt die Anzahl Ärzt:innen an diesem Standort auf einer visuellen Skala.",
+      },
+      {
+        target: ".earnings-row",
+        title: "Möglicher Umsatz",
+        before: () => ensureDemoDetail(demo, false),
+        text: "Hochrechnung aus Praxisgröße × „Gewinn pro Arzt“ aus den Einstellungen. Verschwindet automatisch, sobald die Praxis Kunde ist.",
+      },
+      {
+        target: ".popup-email-row",
+        title: "Kontakt & E-Mail",
+        before: () => ensureDemoDetail(demo, false),
+        text: "Ansprechpartner und Telefon stehen unter „Kontakt“, die E-Mail-Adresse direkt darunter. Fehlt sie in den Rohdaten, trägst du sie über das ✏️-Symbol manuell nach — jederzeit änderbar.",
+      },
+      {
+        target: "#d-actions",
+        title: "Aktionen",
+        before: () => ensureDemoDetail(demo, false),
+        text: "„Anrufen“ öffnet die Telefon-App, „E-Mail“ öffnet eine vorformulierte Erstansprache (mit den größten Painpoints aus der Infothek, falls vorhanden) in deinem E-Mail-Programm, „Route“ öffnet die Routenplanung.",
+      },
+      {
+        target: "#route-planner",
+        title: "Routenplanung",
+        before: () => {
+          ensureDemoDetail(demo, false);
+          if (demo) openRoutePlanner(demo);
+        },
+        after: () => closeRoutePlanner(),
+        text: "Start-Praxis ist schon gesetzt. Du kannst weitere Praxis-Stopps ergänzen (per Klick auf dem Globus oder aus der Liste) — am Ende öffnet sich die komplette, fertig sortierte Route direkt in Google Maps.",
+      },
+      {
+        target: ".infothek",
+        title: "Infothek & Recherche",
+        before: () => ensureDemoDetail(demo, true),
+        text: "Hier sammelst du recherchierte Hintergrundinfos zur Praxis. Die eigentliche Recherche läuft über den „medipulse-infosheet“-Skill in Claude Code: Du nennst Claude dort den Praxisnamen, Claude recherchiert Trigger, Firmografie, Struktur, Produkt und die größten Painpoints — und liefert am Ende einen fertigen Text plus passende .txt-Datei.",
+      },
+      {
+        target: "#infosheet-paste-all",
+        title: "Recherche-Ergebnis übernehmen",
+        before: () => {
+          ensureDemoDetail(demo, true);
+          if (demo) openInfosheetEditor(demo);
+        },
+        after: () => closeInfosheetEditor(),
+        text: "Den kompletten Text aus Claude fügst du hier oben ein und klickst „Auf die Felder unten verteilen“ — die Felder Trigger, Firmografie, Struktur, Produkt und Painpoints werden automatisch anhand der Überschriften befüllt. Alternativ lädst du direkt die vom Skill mitgelieferte .txt-Datei über „📎 Stattdessen .txt-Datei hochladen“ hoch. Ganz ohne Recherche lassen sich die Felder darunter auch von Hand ausfüllen.",
+      },
+      {
+        target: null,
+        title: "Das war's! 🎉",
+        before: () => {
+          closeAllOverlayPanels();
+          closeDemoDetail();
+        },
+        text: "Du kennst jetzt jede Funktion dieser Ansicht. Diese Tour startest du jederzeit erneut über den „Tutorial“-Button unten rechts.",
+      },
+    ];
+  }
+
+  function positionTooltip(target) {
+    tooltipEl.style.visibility = "hidden";
+    tooltipEl.style.top = "0px";
+    tooltipEl.style.left = "0px";
+    requestAnimationFrame(() => {
+      const margin = 14;
+      const tw = tooltipEl.offsetWidth;
+      const th = tooltipEl.offsetHeight;
+      let top, left;
+      if (!target) {
+        highlightEl.hidden = true;
+        top = (window.innerHeight - th) / 2;
+        left = (window.innerWidth - tw) / 2;
+      } else {
+        const rect = target.getBoundingClientRect();
+        highlightEl.hidden = false;
+        highlightEl.style.top = `${rect.top - 6}px`;
+        highlightEl.style.left = `${rect.left - 6}px`;
+        highlightEl.style.width = `${rect.width + 12}px`;
+        highlightEl.style.height = `${rect.height + 12}px`;
+
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        if (spaceBelow >= th + margin * 2 || spaceBelow >= spaceAbove) {
+          top = rect.bottom + margin;
+        } else {
+          top = rect.top - th - margin;
+        }
+        left = Math.min(Math.max(rect.left, margin), window.innerWidth - tw - margin);
+      }
+      top = Math.min(Math.max(top, margin), window.innerHeight - th - margin);
+      tooltipEl.style.top = `${top}px`;
+      tooltipEl.style.left = `${left}px`;
+      tooltipEl.style.visibility = "visible";
+    });
+  }
+
+  function showStep(index) {
+    stepIndex = index;
+    const step = steps[index];
+    if (typeof step.before === "function") {
+      try {
+        step.before();
+      } catch (err) {
+        console.warn("Tour-Schritt konnte nicht vorbereitet werden:", err);
+      }
+    }
+    stepLabelEl.textContent = `Schritt ${index + 1} von ${steps.length}`;
+    titleEl.textContent = step.title;
+    textEl.textContent = step.text;
+    backBtn.disabled = index === 0;
+    nextBtn.textContent = index === steps.length - 1 ? "Fertig" : "Weiter";
+    setTimeout(() => {
+      const target = resolveTarget(step);
+      if (target) target.scrollIntoView({ block: "center", behavior: "instant" });
+      positionTooltip(target);
+    }, 120);
+  }
+
+  function goTo(index) {
+    if (index < 0 || index >= steps.length) return;
+    const prevStep = steps[stepIndex];
+    if (prevStep && typeof prevStep.after === "function") {
+      try {
+        prevStep.after();
+      } catch (err) {
+        console.warn("Tour-Schritt konnte nicht aufgeräumt werden:", err);
+      }
+    }
+    showStep(index);
+  }
+
+  function onKeydown(e) {
+    if (!active) return;
+    if (e.key === "Escape") endTour();
+    else if (e.key === "ArrowRight") nextBtn.click();
+    else if (e.key === "ArrowLeft" && !backBtn.disabled) goTo(stepIndex - 1);
+  }
+
+  function onResize() {
+    if (!active) return;
+    positionTooltip(resolveTarget(steps[stepIndex]));
+  }
+
+  function startTour() {
+    if (active) return;
+    active = true;
+    closeAllOverlayPanels();
+    closeDemoDetail();
+    priorState = {
+      bundeslandCollapsed: document.getElementById("bundesland-body").classList.contains("collapsed"),
+      infothekExpandedFor,
+    };
+    steps = buildSteps();
+    overlay.hidden = false;
+    document.addEventListener("keydown", onKeydown);
+    window.addEventListener("resize", onResize);
+    showStep(0);
+  }
+
+  function endTour() {
+    if (!active) return;
+    const step = steps[stepIndex];
+    if (step && typeof step.after === "function") {
+      try {
+        step.after();
+      } catch (err) {
+        console.warn("Tour konnte nicht sauber beendet werden:", err);
+      }
+    }
+    active = false;
+    overlay.hidden = true;
+    document.removeEventListener("keydown", onKeydown);
+    window.removeEventListener("resize", onResize);
+    closeAllOverlayPanels();
+    closeDemoDetail();
+    closeInfosheetEditor();
+    closeRoutePlanner();
+    if (priorState) {
+      const bundeslandBody = document.getElementById("bundesland-body");
+      bundeslandBody.classList.toggle("collapsed", priorState.bundeslandCollapsed);
+      const chevron = document.querySelector('.chevron-btn[data-target="bundesland-body"]');
+      if (chevron) chevron.setAttribute("aria-expanded", String(!priorState.bundeslandCollapsed));
+      infothekExpandedFor = priorState.infothekExpandedFor;
+    }
+  }
+
+  nextBtn.addEventListener("click", () => {
+    if (stepIndex === steps.length - 1) endTour();
+    else goTo(stepIndex + 1);
+  });
+  backBtn.addEventListener("click", () => goTo(stepIndex - 1));
+  skipBtn.addEventListener("click", endTour);
+  document.getElementById("tour-fab").addEventListener("click", startTour);
+})();
 </script>

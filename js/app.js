@@ -3087,3 +3087,396 @@ document.getElementById("sales-stats-login-btn").addEventListener("click", () =>
 });
 
 updateUserBadge();
+
+// ============================================================================
+// Geführte Tour — erklärt jede Funktion direkt an der echten Oberfläche
+// (öffnet dafür kurz die jeweiligen Panels/Popups), statt in einem separaten
+// Hilfe-Dokument, das schnell veraltet und nie gelesen wird.
+// ============================================================================
+(function () {
+  const overlay = document.getElementById("tour-overlay");
+  const highlightEl = document.getElementById("tour-highlight");
+  const tooltipEl = document.getElementById("tour-tooltip");
+  const stepLabelEl = document.getElementById("tour-step-label");
+  const titleEl = document.getElementById("tour-title");
+  const textEl = document.getElementById("tour-text");
+  const backBtn = document.getElementById("tour-back-btn");
+  const nextBtn = document.getElementById("tour-next-btn");
+  const skipBtn = document.getElementById("tour-skip-btn");
+
+  let steps = [];
+  let stepIndex = 0;
+  let active = false;
+  let priorState = null;
+
+  function pickDemoDoctor() {
+    const pool = AERZTE_DATA;
+    if (!pool || !pool.length) return null;
+    return (
+      pool.find((d) => d.kette && d.telefon && d.status !== "kunde" && !getInfosheet(d.id)) ||
+      pool.find((d) => d.status !== "kunde") ||
+      pool[0]
+    );
+  }
+
+  function ensurePanel(panelId, renderFn) {
+    closeAllOverlayPanels();
+    document.getElementById(panelId).hidden = false;
+    if (renderFn) renderFn();
+  }
+
+  function ensureDemoPopup(demo, expandInfothek) {
+    if (!demo) return;
+    closeAllOverlayPanels();
+    if (expandInfothek) infothekExpandedFor = demo.id;
+    map.jumpTo({ center: [demo.lng, demo.lat], zoom: 10 });
+    openDoctorPopup(demo, [demo.lng, demo.lat]);
+  }
+
+  function buildSteps() {
+    const demo = pickDemoDoctor();
+    const accountText = currentUser
+      ? `Du bist aktuell als „${currentUser}“ angemeldet. Hier änderst du dein Profilbild, meldest dich ab oder löschst dein Konto komplett (das entfernt dich dann auch aus den Rankings).`
+      : `Hier meldest du dich an oder registrierst ein neues Konto — nur ein Name + Passwort, rein lokal auf diesem Gerät. Angemeldet lässt sich deine eigene Statistik führen und du erscheinst in den Rankings.`;
+
+    return [
+      {
+        target: null,
+        title: "Willkommen bei MediPulse 👋",
+        text: "Diese Tour zeigt dir Schritt für Schritt jede Funktion der App. Mit „Weiter“ geht's los — mit dem × oben rechts steigst du jederzeit aus.",
+      },
+      {
+        target: "#stats",
+        title: "Kennzahlen auf einen Blick",
+        before: () => closeAllOverlayPanels(),
+        text: "Live-Übersicht: wie viele Praxen insgesamt erfasst sind und wie viele davon Kunden, Interessenten oder Leads sind.",
+      },
+      {
+        target: "#notif-bell",
+        title: "Follow-up-Erinnerungen",
+        before: () => ensurePanel("notif-panel"),
+        text: "Sobald du über den E-Mail-Button im Popup eine Erstansprache verschickt hast, taucht hier 24 Stunden später automatisch eine Erinnerung auf, falls noch kein Follow-up gesendet wurde — inklusive fertigem Follow-up-Text.",
+      },
+      {
+        target: "#user-badge",
+        title: "Konto",
+        before: () => ensurePanel("auth-panel", renderAuthPanel),
+        text: accountText,
+      },
+      {
+        target: "#sales-stats-toggle",
+        title: "Meine Statistik",
+        before: () => {
+          statsView = "mine";
+          ensurePanel("sales-stats-panel", renderSalesStatsPanel);
+        },
+        text: "Deine eigenen Zahlen — Anrufe, Vor-Ort-Termine, neue Kunden, E-Mails — über Tag, Woche oder Monat, inklusive Streaks für Tage in Folge mit Aktivität.",
+      },
+      {
+        target: "#sales-stats-body",
+        title: "Rankings",
+        before: () => {
+          statsView = "rankings";
+          renderSalesStatsPanel();
+        },
+        text: "Der Team-Vergleich. Wichtig: Das Ranking zeigt nur Kolleg:innen, die auf DIESEM Gerät/Browser registriert sind — bei getrennten Laptops sieht aktuell jede:r nur sich selbst.",
+      },
+      {
+        target: "#settings-toggle",
+        title: "Einstellungen",
+        before: () => ensurePanel("settings-panel"),
+        text: "Globale Anzeige-Optionen — schauen wir sie uns einzeln an.",
+      },
+      {
+        target: "#settings-rotate-toggle",
+        title: "Automatische Rotation",
+        text: "Lässt die Karte im Ruhezustand langsam von selbst weiterdrehen — praktisch als Übersichts-/Bildschirmschoner-Ansicht.",
+      },
+      {
+        target: "#settings-heatmap-toggle",
+        title: "Heatmap",
+        text: "Blendet zusätzlich eine Dichte-Heatmap ein. Direkt darunter lässt sich der Bereich einschränken: nur Kunden, nur Leads oder alle Praxen.",
+      },
+      {
+        target: "#gpa-slider",
+        title: "Gewinn pro Arzt",
+        text: "Dieser Wert (€ pro Arzt/Ärztin) fließt in die „möglicher Umsatz“-Schätzung im Popup jeder Praxis ein — je nach Praxisgröße hochgerechnet.",
+      },
+      {
+        target: "#settings-gemini-worker-url",
+        title: "Gemini-Worker (optional)",
+        text: "Trägst du hier die URL eures Cloudflare Workers ein, recherchiert die App beim Erstellen eines Infosheets automatisch per KI, inklusive optional hochgeladener Dokumente. Ohne URL bleibt es beim manuellen Workflow — dazu gleich mehr bei der Infothek.",
+      },
+      {
+        target: "#search",
+        title: "Suche",
+        before: () => closeAllOverlayPanels(),
+        text: "Volltextsuche über Name, Stadt und Fachrichtung — filtert Liste und Karte sofort.",
+      },
+      {
+        target: "#status-filter-group",
+        title: "Filter: Status",
+        text: "Blendet Praxen nach Status ein/aus — Kunde, Interessent, Lead, Inaktiv.",
+      },
+      {
+        target: ".kategorie-filters",
+        title: "Filter: Fachrichtung & MVZ",
+        text: "Filtert nach Fachrichtung — „alle“/„keine“ setzt alle Kacheln auf einmal.",
+      },
+      {
+        target: ".groesse-filter",
+        title: "Filter: Praxisgröße",
+        text: "Regler + Zahlenfeld, um nur Praxen ab einer bestimmten Anzahl Ärzt:innen anzuzeigen.",
+      },
+      {
+        target: ".bundesland-filter",
+        title: "Filter: Bundesland",
+        before: () => {
+          const body = document.getElementById("bundesland-body");
+          const chevron = document.querySelector('.chevron-btn[data-target="bundesland-body"]');
+          body.classList.remove("collapsed");
+          if (chevron) chevron.setAttribute("aria-expanded", "true");
+        },
+        text: "Genau wie bei der Fachrichtung, nur nach Bundesland.",
+      },
+      {
+        target: "#doctor-list",
+        title: "Praxen-Liste",
+        text: "Alle gefilterten Praxen als Liste — ein Klick fliegt auf der Karte direkt zur Praxis und öffnet ihre Infokarte.",
+      },
+      {
+        target: "#sidebar-toggle",
+        title: "Liste ein-/ausblenden",
+        text: "Blendet die linke Seitenleiste aus, wenn du mehr Platz für die Karte brauchst.",
+      },
+      {
+        target: "#map",
+        title: "Die Karte",
+        before: () => {
+          document.getElementById("sidebar").classList.remove("collapsed");
+          closeAllOverlayPanels();
+          if (currentPopupDoctor) popup.remove();
+        },
+        text: "Jeder Punkt ist eine Praxis, farbcodiert nach Status (siehe Legende unten links). Klick auf einen Punkt öffnet die Infokarte — schauen wir sie uns als Nächstes an.",
+      },
+      {
+        target: ".popup-make-kunde-btn, .popup-unmake-kunde-btn",
+        title: "Infokarte: Status ändern",
+        before: () => ensureDemoPopup(demo, false),
+        text: "Ein Klick macht eine Praxis direkt zum Kunden — der vorherige Status (Lead/Interessent) wird gemerkt. „Kein Kunde mehr“ macht das jederzeit wieder rückgängig.",
+      },
+      {
+        target: ".size-row",
+        title: "Praxisgröße",
+        before: () => ensureDemoPopup(demo, false),
+        text: "Zeigt die Anzahl Ärzt:innen an diesem Standort auf einer visuellen Skala.",
+      },
+      {
+        target: ".earnings-row",
+        title: "Möglicher Umsatz",
+        before: () => ensureDemoPopup(demo, false),
+        text: "Hochrechnung aus Praxisgröße × „Gewinn pro Arzt“ aus den Einstellungen. Verschwindet automatisch, sobald die Praxis Kunde ist.",
+      },
+      {
+        target: ".popup-email-row",
+        title: "Kontakt & E-Mail",
+        before: () => ensureDemoPopup(demo, false),
+        text: "Adresse, Ansprechpartner, Telefon und E-Mail der Praxis. Fehlt die E-Mail-Adresse in den Rohdaten, trägst du sie über das ✏️-Symbol manuell nach — jederzeit änderbar.",
+      },
+      {
+        target: ".popup-actions",
+        title: "Aktionen",
+        before: () => ensureDemoPopup(demo, false),
+        text: "„Anrufen“ öffnet die Telefon-App, „E-Mail“ öffnet eine vorformulierte Erstansprache (mit den größten Painpoints aus der Infothek, falls vorhanden) in deinem E-Mail-Programm, „Route“ öffnet die Routenplanung.",
+      },
+      {
+        target: "#route-planner",
+        title: "Routenplanung",
+        before: () => {
+          ensureDemoPopup(demo, false);
+          if (demo) openRoutePlanner(demo);
+        },
+        after: () => closeRoutePlanner(),
+        text: "Start-Praxis ist schon gesetzt. Du kannst weitere Praxis-Stopps ergänzen (per Klick auf der Karte oder aus der Liste) — am Ende öffnet sich die komplette, fertig sortierte Route direkt in Google Maps.",
+      },
+      {
+        target: ".infothek",
+        title: "Infothek & Recherche",
+        before: () => ensureDemoPopup(demo, true),
+        text: "Hier sammelst du recherchierte Hintergrundinfos zur Praxis. Die eigentliche Recherche läuft über den „medipulse-infosheet“-Skill in Claude Code: Du nennst Claude dort den Praxisnamen, Claude recherchiert Trigger, Firmografie, Struktur, Produkt und die größten Painpoints — und liefert am Ende einen fertigen Text plus passende .txt-Datei.",
+      },
+      {
+        target: "#infosheet-paste-all",
+        title: "Recherche-Ergebnis übernehmen",
+        before: () => {
+          ensureDemoPopup(demo, true);
+          if (demo) openInfosheetEditor(demo);
+        },
+        after: () => closeInfosheetEditor(),
+        text: "Den kompletten Text aus Claude fügst du hier oben ein und klickst „Auf die Felder unten verteilen“ — die Felder Trigger, Firmografie, Struktur, Produkt und Painpoints werden automatisch anhand der Überschriften befüllt. Alternativ lädst du direkt die vom Skill mitgelieferte .txt-Datei über „📎 Stattdessen .txt-Datei hochladen“ hoch. Ganz ohne Recherche lassen sich die Felder darunter auch von Hand ausfüllen.",
+      },
+      {
+        target: geminiWorkerUrl ? ".infosheet-docs" : null,
+        title: "Dokumente zur Recherche",
+        before: () => ensureDemoPopup(demo, true),
+        text: geminiWorkerUrl
+          ? "Optional lassen sich bis zu 3 PDFs/Bilder je Praxis hochladen (z.B. Screenshots der Webseite) — die fließen automatisch als Zusatzkontext in eine erneute KI-Recherche ein (Button „🔄 Mit Dokumenten neu recherchieren“, sobald ein Infosheet existiert)."
+          : "Sobald in den Einstellungen eine Gemini-Worker-URL hinterlegt ist, taucht hier zusätzlich ein Upload für bis zu 3 PDFs/Bilder je Praxis auf (z.B. Screenshots der Webseite) — die fließen dann automatisch als Zusatzkontext in die KI-Recherche ein.",
+      },
+      {
+        target: null,
+        title: "Das war's! 🎉",
+        before: () => {
+          closeAllOverlayPanels();
+          if (currentPopupDoctor) popup.remove();
+        },
+        text: "Du kennst jetzt jede Funktion der App. Diese Tour startest du jederzeit erneut über den „Tutorial“-Button unten rechts.",
+      },
+    ];
+  }
+
+  function positionTooltip(target) {
+    tooltipEl.style.visibility = "hidden";
+    tooltipEl.style.top = "0px";
+    tooltipEl.style.left = "0px";
+    requestAnimationFrame(() => {
+      const margin = 14;
+      const tw = tooltipEl.offsetWidth;
+      const th = tooltipEl.offsetHeight;
+      let top, left;
+      if (!target) {
+        highlightEl.hidden = true;
+        top = (window.innerHeight - th) / 2;
+        left = (window.innerWidth - tw) / 2;
+      } else {
+        const rect = target.getBoundingClientRect();
+        highlightEl.hidden = false;
+        highlightEl.style.top = `${rect.top - 6}px`;
+        highlightEl.style.left = `${rect.left - 6}px`;
+        highlightEl.style.width = `${rect.width + 12}px`;
+        highlightEl.style.height = `${rect.height + 12}px`;
+
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        if (spaceBelow >= th + margin * 2 || spaceBelow >= spaceAbove) {
+          top = rect.bottom + margin;
+        } else {
+          top = rect.top - th - margin;
+        }
+        left = Math.min(Math.max(rect.left, margin), window.innerWidth - tw - margin);
+      }
+      top = Math.min(Math.max(top, margin), window.innerHeight - th - margin);
+      tooltipEl.style.top = `${top}px`;
+      tooltipEl.style.left = `${left}px`;
+      tooltipEl.style.visibility = "visible";
+    });
+  }
+
+  function showStep(index) {
+    stepIndex = index;
+    const step = steps[index];
+    if (typeof step.before === "function") {
+      try {
+        step.before();
+      } catch (err) {
+        console.warn("Tour-Schritt konnte nicht vorbereitet werden:", err);
+      }
+    }
+    stepLabelEl.textContent = `Schritt ${index + 1} von ${steps.length}`;
+    titleEl.textContent = step.title;
+    textEl.textContent = step.text;
+    backBtn.disabled = index === 0;
+    nextBtn.textContent = index === steps.length - 1 ? "Fertig" : "Weiter";
+    setTimeout(() => {
+      const target = step.target ? document.querySelector(step.target) : null;
+      if (target) target.scrollIntoView({ block: "center", behavior: "instant" });
+      positionTooltip(target);
+    }, 120);
+  }
+
+  function goTo(index) {
+    if (index < 0 || index >= steps.length) return;
+    const prevStep = steps[stepIndex];
+    if (prevStep && typeof prevStep.after === "function") {
+      try {
+        prevStep.after();
+      } catch (err) {
+        console.warn("Tour-Schritt konnte nicht aufgeräumt werden:", err);
+      }
+    }
+    showStep(index);
+  }
+
+  function onKeydown(e) {
+    if (!active) return;
+    if (e.key === "Escape") endTour();
+    else if (e.key === "ArrowRight") nextBtn.click();
+    else if (e.key === "ArrowLeft" && !backBtn.disabled) goTo(stepIndex - 1);
+  }
+
+  function onResize() {
+    if (!active) return;
+    const step = steps[stepIndex];
+    const target = step && step.target ? document.querySelector(step.target) : null;
+    positionTooltip(target);
+  }
+
+  function startTour() {
+    if (active) return;
+    active = true;
+    closeAllOverlayPanels();
+    if (currentPopupDoctor) {
+      popup.remove();
+      currentPopupDoctor = null;
+    }
+    priorState = {
+      sidebarCollapsed: document.getElementById("sidebar").classList.contains("collapsed"),
+      bundeslandCollapsed: document.getElementById("bundesland-body").classList.contains("collapsed"),
+      infothekExpandedFor,
+    };
+    steps = buildSteps();
+    overlay.hidden = false;
+    document.addEventListener("keydown", onKeydown);
+    window.addEventListener("resize", onResize);
+    showStep(0);
+  }
+
+  function endTour() {
+    if (!active) return;
+    const step = steps[stepIndex];
+    if (step && typeof step.after === "function") {
+      try {
+        step.after();
+      } catch (err) {
+        console.warn("Tour konnte nicht sauber beendet werden:", err);
+      }
+    }
+    active = false;
+    overlay.hidden = true;
+    document.removeEventListener("keydown", onKeydown);
+    window.removeEventListener("resize", onResize);
+    closeAllOverlayPanels();
+    if (currentPopupDoctor) {
+      popup.remove();
+      currentPopupDoctor = null;
+    }
+    closeInfosheetEditor();
+    closeRoutePlanner();
+    if (priorState) {
+      document.getElementById("sidebar").classList.toggle("collapsed", priorState.sidebarCollapsed);
+      const bundeslandBody = document.getElementById("bundesland-body");
+      bundeslandBody.classList.toggle("collapsed", priorState.bundeslandCollapsed);
+      const chevron = document.querySelector('.chevron-btn[data-target="bundesland-body"]');
+      if (chevron) chevron.setAttribute("aria-expanded", String(!priorState.bundeslandCollapsed));
+      infothekExpandedFor = priorState.infothekExpandedFor;
+    }
+  }
+
+  nextBtn.addEventListener("click", () => {
+    if (stepIndex === steps.length - 1) endTour();
+    else goTo(stepIndex + 1);
+  });
+  backBtn.addEventListener("click", () => goTo(stepIndex - 1));
+  skipBtn.addEventListener("click", endTour);
+  document.getElementById("tour-fab").addEventListener("click", startTour);
+})();

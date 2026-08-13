@@ -146,7 +146,7 @@
         <input type="text" id="search" placeholder="Suche nach Name, Stadt, Fachrichtung…" />
       </div>
 
-      <div class="sidebar-section filters">
+      <div class="sidebar-section filters" id="status-filter-group">
         <div class="filter-group-label">
           <button type="button" class="chevron-btn" data-target="status-body" aria-expanded="true"><span class="chevron"></span></button>
           <span class="filter-group-title">Status</span>
@@ -290,6 +290,21 @@
         <input type="text" id="infosheet-these-2" class="auth-input" placeholder="Painpoint 2" maxlength="200" />
 
         <button type="button" id="infosheet-editor-save" class="auth-submit-btn">Speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <button type="button" id="tour-fab" class="tour-fab-btn">🎓 Tutorial</button>
+  <div class="tour-overlay" id="tour-overlay" hidden>
+    <div class="tour-highlight" id="tour-highlight" hidden></div>
+    <div class="tour-tooltip" id="tour-tooltip">
+      <button type="button" class="tour-skip-btn" id="tour-skip-btn" title="Tour beenden">×</button>
+      <div class="tour-step-label" id="tour-step-label"></div>
+      <div class="tour-title" id="tour-title"></div>
+      <div class="tour-text" id="tour-text"></div>
+      <div class="tour-actions">
+        <button type="button" class="tour-btn tour-btn-ghost" id="tour-back-btn">Zurück</button>
+        <button type="button" class="tour-btn tour-btn-primary" id="tour-next-btn">Weiter</button>
       </div>
     </div>
   </div>
