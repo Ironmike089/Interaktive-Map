@@ -229,6 +229,7 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
   font-family: "Karla", sans-serif;
 }
 .auth-switch-btn:hover { text-decoration: underline; }
+.auth-danger-btn { color: #e74c3c; margin-top: 6px; }
 .auth-error {
   background: rgba(231, 76, 60, 0.15); border: 1px solid #e74c3c; color: #e74c3c;
   border-radius: 8px; padding: 7px 9px; font-size: 12px; margin-bottom: 8px; font-family: "Karla", sans-serif;
@@ -830,6 +831,7 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
         <input type="file" id="auth-avatar-input" accept="image/*" hidden>
       </div>
       <button type="button" id="auth-logout" class="auth-submit-btn">Abmelden</button>
+      <button type="button" id="auth-delete-account" class="auth-switch-btn auth-danger-btn">Konto löschen</button>
     </div>
 
     <div id="auth-form-wrap">
@@ -2733,6 +2735,16 @@ function logoutUser() {
   updateUserBadge();
 }
 
+function deleteAccount(name) {
+  const users = loadUsers().filter((u) => u.name.toLowerCase() !== name.toLowerCase());
+  saveUsers(users);
+  localStorage.removeItem(statsKey(name));
+  localStorage.removeItem(avatarKey(name));
+  if (currentUser && currentUser.toLowerCase() === name.toLowerCase()) {
+    logoutUser();
+  }
+}
+
 function avatarKey(user) {
   return `medipulse_avatar_${user}`;
 }
@@ -2859,6 +2871,15 @@ document.getElementById("auth-submit").addEventListener("click", async () => {
 });
 document.getElementById("auth-logout").addEventListener("click", () => {
   logoutUser();
+});
+document.getElementById("auth-delete-account").addEventListener("click", () => {
+  if (!currentUser) return;
+  const ok = confirm(
+    `Konto "${currentUser}" wirklich unwiderruflich löschen? Deine Statistik verschwindet und du fällst aus den Rankings raus.`
+  );
+  if (!ok) return;
+  deleteAccount(currentUser);
+  document.getElementById("auth-panel").hidden = true;
 });
 
 // --- Statistik (pro Konto, nur lokal, mit Tagesverlauf & Streaks) ---

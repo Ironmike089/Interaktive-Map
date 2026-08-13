@@ -2294,6 +2294,16 @@ function logoutUser() {
   updateUserBadge();
 }
 
+function deleteAccount(name) {
+  const users = loadUsers().filter((u) => u.name.toLowerCase() !== name.toLowerCase());
+  saveUsers(users);
+  localStorage.removeItem(statsKey(name));
+  localStorage.removeItem(avatarKey(name));
+  if (currentUser && currentUser.toLowerCase() === name.toLowerCase()) {
+    logoutUser();
+  }
+}
+
 // Profilbild je Account: als kleines, quadratisch zugeschnittenes JPEG
 // (Data-URL) in localStorage, damit es im Vergleich (Rankings) neben dem
 // Namen erscheinen kann — ohne Upload auf einen Server.
@@ -2430,6 +2440,15 @@ document.getElementById("auth-submit").addEventListener("click", async () => {
 });
 document.getElementById("auth-logout").addEventListener("click", () => {
   logoutUser();
+});
+document.getElementById("auth-delete-account").addEventListener("click", () => {
+  if (!currentUser) return;
+  const ok = confirm(
+    `Konto "${currentUser}" wirklich unwiderruflich löschen? Deine Statistik verschwindet und du fällst aus den Rankings raus.`
+  );
+  if (!ok) return;
+  deleteAccount(currentUser);
+  document.getElementById("auth-panel").hidden = true;
 });
 
 // --- Statistik (pro Konto, nur lokal, mit Tagesverlauf & Streaks) ---

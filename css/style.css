@@ -205,6 +205,7 @@ html, body {
   padding: 2px 0;
 }
 .auth-switch-btn:hover { text-decoration: underline; }
+.auth-danger-btn { color: #e74c3c; margin-top: 6px; }
 .auth-error {
   background: rgba(231, 76, 60, 0.15);
   border: 1px solid #e74c3c;
