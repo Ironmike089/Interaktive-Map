@@ -149,6 +149,43 @@ function unmarkDoctorAsKunde(d) {
   refreshPopupFor(d.id);
 }
 
+// Die E-Mail-Adresse kommt normalerweise aus den AOK-Rohdaten und fehlt dort
+// bei vielen Praxen. Damit man sie trotzdem für die Erstansprache/Follow-up
+// nutzen kann, lässt sie sich manuell nachtragen — genau wie beim Status
+// separat in localStorage abgelegt (überschreibt/ergänzt nie die Rohdaten
+// selbst) und beim Laden auf die Datensätze angewendet.
+function getEmailOverrides() {
+  try {
+    return JSON.parse(localStorage.getItem("medipulse_email_overrides") || "{}");
+  } catch {
+    return {};
+  }
+}
+function saveEmailOverrides(overrides) {
+  localStorage.setItem("medipulse_email_overrides", JSON.stringify(overrides));
+}
+function applyEmailOverrides(data) {
+  const overrides = getEmailOverrides();
+  data.forEach((d) => {
+    d.emailOriginal = d.email || "";
+    if (overrides[d.id]) d.email = overrides[d.id];
+  });
+}
+function setDoctorEmail(d, email) {
+  const overrides = getEmailOverrides();
+  const trimmed = email.trim();
+  if (trimmed) {
+    overrides[d.id] = trimmed;
+    d.email = trimmed;
+  } else {
+    delete overrides[d.id];
+    d.email = d.emailOriginal || "";
+  }
+  saveEmailOverrides(overrides);
+  renderList();
+  refreshPopupFor(d.id);
+}
+
 // Echte Ärzte-Daten liegen gzip-komprimiert unter data/aerzte-teil*.json.gz
 // (siehe scripts/csv_to_json.py). Fehlende Teile (noch nicht geliefert) werden
 // stillschweigend übersprungen; ohne jeden Teil greift die Beispiel-Liste aus
@@ -272,6 +309,7 @@ function maybeInit() {
 setLoadingState(true);
 loadAerzteData().then((data) => {
   applyStatusOverrides(data);
+  applyEmailOverrides(data);
   AERZTE_DATA = data;
   dataReady = true;
   maxGroesseInData = data.reduce((max, d) => Math.max(max, d.groesse || 1), 1);
@@ -1448,7 +1486,10 @@ function openDoctorPopup(d, coords) {
       <div class="popup-row">📍 ${escapeHtml(d.strasse)}, ${escapeHtml(d.plz)} ${escapeHtml(d.stadt)}</div>
       ${d.ansprechpartner && d.ansprechpartner !== d.name ? `<div class="popup-row">👤 ${escapeHtml(d.ansprechpartner)}</div>` : ""}
       ${d.telefon ? `<div class="popup-row">📞 ${escapeHtml(d.telefon)}</div>` : ""}
-      ${d.email ? `<div class="popup-row">✉️ ${escapeHtml(d.email)}</div>` : ""}
+      <div class="popup-row popup-email-row">
+        ${d.email ? `✉️ ${escapeHtml(d.email)}` : `<span class="popup-email-missing">✉️ Keine E-Mail hinterlegt</span>`}
+        <button type="button" class="popup-email-edit-btn" data-id="${d.id}" title="${d.email ? "E-Mail bearbeiten" : "E-Mail eintragen"}">✏️</button>
+      </div>
       ${d.website ? `<div class="popup-row">🔗 <a href="${escapeHtml(d.website)}" target="_blank" rel="noopener">${escapeHtml(d.website.replace(/^https?:\/\//, ""))}</a></div>` : ""}
       ${d.notizen ? `<div class="popup-row" style="color:var(--text-dim)">📝 ${escapeHtml(d.notizen)}</div>` : ""}
       <div class="popup-actions">
@@ -2166,6 +2207,11 @@ document.addEventListener("click", (e) => {
   const emailBtn = e.target.closest(".popup-email-btn");
   if (emailBtn) {
     recordEmailSent(Number(emailBtn.dataset.id));
+  }
+  const emailEditBtn = e.target.closest(".popup-email-edit-btn");
+  if (emailEditBtn && currentPopupDoctor) {
+    const input = prompt("E-Mail-Adresse der Praxis:", currentPopupDoctor.email || "");
+    if (input !== null) setDoctorEmail(currentPopupDoctor, input);
   }
   const infothekToggle = e.target.closest(".infothek-toggle");
   if (infothekToggle) {

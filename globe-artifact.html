@@ -701,6 +701,19 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
 .detail-grid { display: flex; flex-direction: column; gap: 10px; margin: 0 0 14px; }
 .detail-grid dt { font-family: "IBM Plex Mono", monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 2px; }
 .detail-grid dd { margin: 0; font-size: 13px; }
+.popup-email-row { display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+.popup-email-missing { color: var(--text-dim); font-style: italic; }
+.popup-email-edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 1px 3px;
+  line-height: 1;
+  opacity: 0.65;
+  flex-shrink: 0;
+}
+.popup-email-edit-btn:hover { opacity: 1; }
 .detail-actions { display: flex; gap: 8px; }
 .detail-actions a, .detail-actions button {
   flex: 1; text-align: center; padding: 8px 6px; border-radius: 9px; background: var(--surface-2);
@@ -991,6 +1004,7 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
       <dl class="detail-grid">
         <div><dt>Adresse</dt><dd id="d-address"></dd></div>
         <div id="d-contact-row"><dt>Kontakt</dt><dd id="d-contact"></dd></div>
+        <div><dt>E-Mail</dt><dd class="popup-email-row"><span id="d-email-text"></span><button type="button" class="popup-email-edit-btn" id="d-email-edit-btn" title="E-Mail bearbeiten">✏️</button></dd></div>
         <div id="d-notes-row"><dt>Notiz</dt><dd id="d-notes"></dd></div>
       </dl>
       <div class="detail-actions" id="d-actions"></div>
@@ -1130,6 +1144,38 @@ function unmarkDoctorAsKunde(d) {
   if (currentDetailDoctor && currentDetailDoctor.id === d.id) showDetail(d);
 }
 
+function getEmailOverrides() {
+  try {
+    return JSON.parse(localStorage.getItem("medipulse_email_overrides") || "{}");
+  } catch {
+    return {};
+  }
+}
+function saveEmailOverrides(overrides) {
+  localStorage.setItem("medipulse_email_overrides", JSON.stringify(overrides));
+}
+function applyEmailOverrides(data) {
+  const overrides = getEmailOverrides();
+  data.forEach((d) => {
+    d.emailOriginal = d.email || "";
+    if (overrides[d.id]) d.email = overrides[d.id];
+  });
+}
+function setDoctorEmail(d, email) {
+  const overrides = getEmailOverrides();
+  const trimmed = email.trim();
+  if (trimmed) {
+    overrides[d.id] = trimmed;
+    d.email = trimmed;
+  } else {
+    delete overrides[d.id];
+    d.email = d.emailOriginal || "";
+  }
+  saveEmailOverrides(overrides);
+  renderList();
+  if (currentDetailDoctor && currentDetailDoctor.id === d.id) showDetail(d);
+}
+
 const STATUS_COLOR = { kunde: 0x34c77b, interessent: 0xf2a93b, lead: 0x6c8cff, inaktiv: 0x6b7893 };
 const STATUS_LABEL = { kunde: "Kunde", interessent: "Interessent", lead: "Lead", inaktiv: "Inaktiv" };
 
@@ -1194,6 +1240,7 @@ async function loadThree() {
   ]);
   AERZTE_DATA = JSON.parse(aerzteJson);
   applyStatusOverrides(AERZTE_DATA);
+  applyEmailOverrides(AERZTE_DATA);
   maxGroesseInData = AERZTE_DATA.reduce((max, d) => Math.max(max, d.groesse || 1), 1);
 
   const canvas = document.getElementById("globe-canvas");
@@ -2583,9 +2630,13 @@ function showDetail(d) {
   }
 
   const contactRow = document.getElementById("d-contact-row");
-  const contactParts = [d.ansprechpartner, d.telefon, d.email].filter(Boolean);
+  const contactParts = [d.ansprechpartner, d.telefon].filter(Boolean);
   if (contactParts.length) { document.getElementById("d-contact").textContent = contactParts.join(" · "); contactRow.hidden = false; }
   else contactRow.hidden = true;
+
+  const emailText = document.getElementById("d-email-text");
+  if (d.email) { emailText.textContent = d.email; emailText.classList.remove("popup-email-missing"); }
+  else { emailText.textContent = "Keine E-Mail hinterlegt"; emailText.classList.add("popup-email-missing"); }
 
   const notesRow = document.getElementById("d-notes-row");
   if (d.notizen) { document.getElementById("d-notes").textContent = d.notizen; notesRow.hidden = false; }
@@ -2645,6 +2696,11 @@ document.getElementById("d-make-kunde-btn").addEventListener("click", () => {
 });
 document.getElementById("d-unmake-kunde-btn").addEventListener("click", () => {
   if (currentDetailDoctor) unmarkDoctorAsKunde(currentDetailDoctor);
+});
+document.getElementById("d-email-edit-btn").addEventListener("click", () => {
+  if (!currentDetailDoctor) return;
+  const input = prompt("E-Mail-Adresse der Praxis:", currentDetailDoctor.email || "");
+  if (input !== null) setDoctorEmail(currentDetailDoctor, input);
 });
 document.addEventListener("click", (e) => {
   // composedPath() statt e.target: Klicks, die das Panel per innerHTML
