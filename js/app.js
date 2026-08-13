@@ -1937,10 +1937,13 @@ document.addEventListener("click", (e) => {
   // meldet und das Panel sofort wieder schließt. composedPath() bildet
   // den DOM-Pfad zum Zeitpunkt des Klicks ab und bleibt davon unberührt.
   const path = e.composedPath();
-  // Klicks im Notiz-Editor oder Infosheet-Editor (eigene Overlays über
-  // anderen Panels) dürfen das dahinterliegende Panel nicht schließen.
+  // Klicks im Notiz-Editor, Infosheet-Editor oder der Tour (eigene Overlays
+  // über anderen Panels) dürfen das dahinterliegende Panel nicht schließen —
+  // sonst schließt z.B. ein Klick auf "Weiter" während der Tour sofort wieder
+  // das Panel, das der gerade angezeigte Schritt extra geöffnet hat.
   if (path.includes(document.getElementById("note-editor-backdrop"))) return;
   if (path.includes(document.getElementById("infosheet-editor-backdrop"))) return;
+  if (path.includes(document.getElementById("tour-overlay"))) return;
   [
     ["settings-panel", "settings-toggle"],
     ["auth-panel", "user-badge"],
@@ -3173,13 +3176,15 @@ updateUserBadge();
         text: "Deine eigenen Zahlen — Anrufe, Vor-Ort-Termine, neue Kunden, E-Mails — über Tag, Woche oder Monat, inklusive Streaks für Tage in Folge mit Aktivität.",
       },
       {
-        target: "#sales-stats-body",
+        target: currentUser ? "#sales-stats-body" : "#sales-stats-logged-out",
         title: "Rankings",
         before: () => {
           statsView = "rankings";
           renderSalesStatsPanel();
         },
-        text: "Der Team-Vergleich. Wichtig: Das Ranking zeigt nur Kolleg:innen, die auf DIESEM Gerät/Browser registriert sind — bei getrennten Laptops sieht aktuell jede:r nur sich selbst.",
+        text: currentUser
+          ? "Der Team-Vergleich. Wichtig: Das Ranking zeigt nur Kolleg:innen, die auf DIESEM Gerät/Browser registriert sind — bei getrennten Laptops sieht aktuell jede:r nur sich selbst."
+          : "Der Team-Vergleich (nach Anmeldung sichtbar). Wichtig: Das Ranking zeigt nur Kolleg:innen, die auf DIESEM Gerät/Browser registriert sind — bei getrennten Laptops sieht aktuell jede:r nur sich selbst.",
       },
       {
         target: "#settings-toggle",
