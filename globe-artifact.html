@@ -695,6 +695,18 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
   background: var(--surface-2); color: var(--text-dim); font-family: "IBM Plex Mono", monospace;
 }
 .list-unmake-kunde-btn:hover { background: var(--border-solid); color: var(--text); }
+.list-make-interessent-btn {
+  display: block; width: 100%; margin-top: 6px; padding: 5px 8px; border-radius: 6px;
+  font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid var(--s-interessent);
+  background: rgba(242, 169, 59, 0.12); color: var(--s-interessent); font-family: "IBM Plex Mono", monospace;
+}
+.list-make-interessent-btn:hover { background: rgba(242, 169, 59, 0.22); }
+.list-unmake-interessent-btn {
+  display: block; width: 100%; margin-top: 6px; padding: 5px 8px; border-radius: 6px;
+  font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid var(--border-solid);
+  background: var(--surface-2); color: var(--text-dim); font-family: "IBM Plex Mono", monospace;
+}
+.list-unmake-interessent-btn:hover { background: var(--border-solid); color: var(--text); }
 .popup-unmake-kunde-btn {
   display: block; width: 100%; margin: 0 0 14px; padding: 8px 6px; border-radius: 9px;
   font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border-solid);
@@ -1236,6 +1248,32 @@ function unmarkDoctorAsKunde(d) {
   saveStatusOverrides(overrides);
   d.status = revertTo;
   bumpStat("kunden", -1);
+  updateStats();
+  renderList();
+  if (currentDetailDoctor && currentDetailDoctor.id === d.id) showDetail(d);
+}
+
+// Nur in der Praxen-Liste (nicht in der großen Infokarte) nutzbar: Lead/
+// Inaktiv schnell als Interessent markieren, mit demselben Revert-Muster
+// wie beim Kunde-Status.
+function markDoctorAsInteressent(d) {
+  if (d.status === "interessent") return;
+  const overrides = getStatusOverrides();
+  overrides[d.id] = { status: "interessent", revertTo: d.status };
+  saveStatusOverrides(overrides);
+  d.status = "interessent";
+  updateStats();
+  renderList();
+  if (currentDetailDoctor && currentDetailDoctor.id === d.id) showDetail(d);
+}
+function unmarkDoctorAsInteressent(d) {
+  if (d.status !== "interessent") return;
+  const overrides = getStatusOverrides();
+  const prev = overrides[d.id];
+  const revertTo = (prev && typeof prev === "object" && prev.revertTo) || "lead";
+  overrides[d.id] = { status: revertTo };
+  saveStatusOverrides(overrides);
+  d.status = revertTo;
   updateStats();
   renderList();
   if (currentDetailDoctor && currentDetailDoctor.id === d.id) showDetail(d);
@@ -1955,7 +1993,12 @@ function renderList() {
         d.status === "kunde"
           ? `<button type="button" class="list-unmake-kunde-btn" data-id="${d.id}">↩ Kein Kunde mehr</button>`
           : `<div class="li-meta li-earnings">💰 ${((d.groesse || 1) * gewinnProArzt).toLocaleString("de-DE")} € möglich</div>
-             <button type="button" class="list-make-kunde-btn" data-id="${d.id}">→ Zum Kunden machen</button>`
+             <button type="button" class="list-make-kunde-btn" data-id="${d.id}">→ Zum Kunden machen</button>
+             ${
+               d.status === "interessent"
+                 ? `<button type="button" class="list-unmake-interessent-btn" data-id="${d.id}">↩ Kein Interessent mehr</button>`
+                 : `<button type="button" class="list-make-interessent-btn" data-id="${d.id}">→ Zum Interessenten machen</button>`
+             }`
       }
     </li>`
     )
@@ -1985,6 +2028,22 @@ function renderList() {
         e.stopPropagation();
         const d = AERZTE_DATA.find((x) => x.id === Number(unmakeKundeBtn.dataset.id));
         if (d) unmarkDoctorAsKunde(d);
+      });
+    }
+    const makeInteressentBtn = li.querySelector(".list-make-interessent-btn");
+    if (makeInteressentBtn) {
+      makeInteressentBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const d = AERZTE_DATA.find((x) => x.id === Number(makeInteressentBtn.dataset.id));
+        if (d) markDoctorAsInteressent(d);
+      });
+    }
+    const unmakeInteressentBtn = li.querySelector(".list-unmake-interessent-btn");
+    if (unmakeInteressentBtn) {
+      unmakeInteressentBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const d = AERZTE_DATA.find((x) => x.id === Number(unmakeInteressentBtn.dataset.id));
+        if (d) unmarkDoctorAsInteressent(d);
       });
     }
   });
@@ -4141,6 +4200,11 @@ setInterval(updateNotificationBell, 5 * 60 * 1000);
         target: "#list",
         title: "Praxen-Liste",
         text: "Alle gefilterten Praxen als Liste — ein Klick lässt den Globus direkt zur Praxis drehen und öffnet ihre Infokarte.",
+      },
+      {
+        target: () => document.querySelector(".list-make-interessent-btn, .list-unmake-interessent-btn"),
+        title: "Zum Interessenten machen",
+        text: "Nur hier in der Liste (nicht in der großen Infokarte): Praxen lassen sich direkt als Interessent markieren — „↩ Kein Interessent mehr“ macht das genauso wie beim Kunden-Status jederzeit wieder rückgängig und stellt den vorherigen Status wieder her.",
       },
       {
         target: "#globe-canvas",

@@ -149,6 +149,32 @@ function unmarkDoctorAsKunde(d) {
   refreshPopupFor(d.id);
 }
 
+// Nur in der Praxen-Liste (nicht im großen Popup) nutzbar: Lead/Inaktiv
+// schnell als Interessent markieren, mit demselben Revert-Muster wie beim
+// Kunde-Status (merkt sich den vorherigen Status statt ihn zu überschreiben).
+function markDoctorAsInteressent(d) {
+  if (d.status === "interessent") return;
+  const overrides = getStatusOverrides();
+  overrides[d.id] = { status: "interessent", revertTo: d.status };
+  saveStatusOverrides(overrides);
+  d.status = "interessent";
+  updateStats();
+  renderList();
+  refreshPopupFor(d.id);
+}
+function unmarkDoctorAsInteressent(d) {
+  if (d.status !== "interessent") return;
+  const overrides = getStatusOverrides();
+  const prev = overrides[d.id];
+  const revertTo = (prev && typeof prev === "object" && prev.revertTo) || "lead";
+  overrides[d.id] = { status: revertTo };
+  saveStatusOverrides(overrides);
+  d.status = revertTo;
+  updateStats();
+  renderList();
+  refreshPopupFor(d.id);
+}
+
 // Die E-Mail-Adresse kommt normalerweise aus den AOK-Rohdaten und fehlt dort
 // bei vielen Praxen. Damit man sie trotzdem für die Erstansprache/Follow-up
 // nutzen kann, lässt sie sich manuell nachtragen — genau wie beim Status
@@ -1748,7 +1774,12 @@ function renderList() {
         d.status === "kunde"
           ? `<button type="button" class="doctor-unmake-kunde-btn" data-id="${d.id}">↩ Kein Kunde mehr</button>`
           : `<div class="doctor-meta doctor-earnings">💰 ${((d.groesse || 1) * gewinnProArzt).toLocaleString("de-DE")} € möglich</div>
-             <button type="button" class="doctor-make-kunde-btn" data-id="${d.id}">→ Zum Kunden machen</button>`
+             <button type="button" class="doctor-make-kunde-btn" data-id="${d.id}">→ Zum Kunden machen</button>
+             ${
+               d.status === "interessent"
+                 ? `<button type="button" class="doctor-unmake-interessent-btn" data-id="${d.id}">↩ Kein Interessent mehr</button>`
+                 : `<button type="button" class="doctor-make-interessent-btn" data-id="${d.id}">→ Zum Interessenten machen</button>`
+             }`
       }
     `;
     li.addEventListener("click", () => selectDoctor(d.id, true));
@@ -1764,6 +1795,20 @@ function renderList() {
       unmakeKundeBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         unmarkDoctorAsKunde(d);
+      });
+    }
+    const makeInteressentBtn = li.querySelector(".doctor-make-interessent-btn");
+    if (makeInteressentBtn) {
+      makeInteressentBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        markDoctorAsInteressent(d);
+      });
+    }
+    const unmakeInteressentBtn = li.querySelector(".doctor-unmake-interessent-btn");
+    if (unmakeInteressentBtn) {
+      unmakeInteressentBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        unmarkDoctorAsInteressent(d);
       });
     }
     list.appendChild(li);
@@ -3297,6 +3342,11 @@ updateUserBadge();
         target: "#doctor-list",
         title: "Praxen-Liste",
         text: "Alle gefilterten Praxen als Liste — ein Klick fliegt auf der Karte direkt zur Praxis und öffnet ihre Infokarte.",
+      },
+      {
+        target: ".doctor-make-interessent-btn, .doctor-unmake-interessent-btn",
+        title: "Zum Interessenten machen",
+        text: "Nur hier in der Liste (nicht in der großen Infokarte): Praxen lassen sich direkt als Interessent markieren — „↩ Kein Interessent mehr“ macht das genauso wie beim Kunden-Status jederzeit wieder rückgängig und stellt den vorherigen Status wieder her.",
       },
       {
         target: "#sidebar-toggle",
