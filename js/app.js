@@ -1383,6 +1383,37 @@ function buildOutreachMailto(d) {
   return `mailto:${d.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
+// --- "Anruf planen" — legt einen Termin-Vorschlag in Google Calendar an ---
+// Feste Vorgabe (morgen 10:00, 30 Minuten), da wir kein verlässliches
+// "wann passt es" kennen — der Nutzer verschiebt den Termin bei Bedarf
+// direkt im Kalender.
+function formatCalendarDate(date) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}T${pad(date.getHours())}${pad(date.getMinutes())}00`;
+}
+function buildCallPlanUrl(d) {
+  const start = new Date();
+  start.setDate(start.getDate() + 1);
+  start.setHours(10, 0, 0, 0);
+  const end = new Date(start.getTime() + 30 * 60 * 1000);
+  const orgLabel = d.einrichtung || d.name;
+  const details = [
+    d.telefon ? `Telefon: ${d.telefon}` : "",
+    d.ansprechpartner && d.ansprechpartner !== d.name ? `Ansprechpartner: ${d.ansprechpartner}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const location = `${d.strasse || ""}, ${d.plz || ""} ${d.stadt || ""}`.trim();
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: `Anruf: ${orgLabel}`,
+    dates: `${formatCalendarDate(start)}/${formatCalendarDate(end)}`,
+    details,
+    location,
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 // --- Follow-up-Erinnerung ---
 // Die App kann nur erkennen, dass auf "E-Mail" geklickt wurde (der
 // E-Mail-Client des Geräts öffnet sich mit vorausgefülltem Entwurf) —
@@ -1551,7 +1582,11 @@ function openDoctorPopup(d, coords) {
       ${d.website ? `<div class="popup-row">🔗 <a href="${escapeHtml(d.website)}" target="_blank" rel="noopener">${escapeHtml(d.website.replace(/^https?:\/\//, ""))}</a></div>` : ""}
       ${d.notizen ? `<div class="popup-row" style="color:var(--text-dim)">📝 ${escapeHtml(d.notizen)}</div>` : ""}
       <div class="popup-actions">
-        ${d.telefon ? `<a href="tel:${escapeHtml(d.telefon)}">Anrufen</a>` : ""}
+        ${
+          d.telefon
+            ? `<a href="tel:${escapeHtml(d.telefon)}">📞 Anrufen</a><a href="${escapeHtml(buildCallPlanUrl(d))}" target="_blank" rel="noopener">📅 Anruf planen</a>`
+            : ""
+        }
         ${d.email ? `<a class="popup-email-btn" data-id="${d.id}" href="${escapeHtml(buildOutreachMailto(d))}">E-Mail</a>` : ""}
         <button type="button" class="popup-route-btn">Route</button>
       </div>
@@ -3391,7 +3426,7 @@ updateUserBadge();
         target: ".popup-actions",
         title: "Aktionen",
         before: () => ensureDemoPopup(demo, false),
-        text: "„Anrufen“ öffnet die Telefon-App, „E-Mail“ öffnet eine vorformulierte Erstansprache (mit den größten Painpoints aus der Infothek, falls vorhanden) in deinem E-Mail-Programm, „Route“ öffnet die Routenplanung.",
+        text: "„Anrufen“ ruft direkt an, „Anruf planen“ legt stattdessen einen Termin-Vorschlag in Google Calendar an (morgen 10 Uhr, lässt sich dort verschieben). „E-Mail“ öffnet eine vorformulierte Erstansprache (mit den größten Painpoints aus der Infothek, falls vorhanden) in deinem E-Mail-Programm, „Route“ öffnet die Routenplanung.",
       },
       {
         target: "#route-planner",

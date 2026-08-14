@@ -1268,9 +1268,10 @@ html, body {
 }
 .popup-unmake-kunde-btn:hover { background: var(--border); color: var(--text); }
 
-.popup-actions { display: flex; gap: 8px; margin-top: 10px; }
+.popup-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .popup-actions a, .popup-actions button {
-  flex: 1;
+  flex: 1 1 calc(50% - 4px);
+  min-width: 100px;
   text-align: center;
   padding: 6px 8px;
   border-radius: 6px;

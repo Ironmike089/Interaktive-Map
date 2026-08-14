@@ -729,9 +729,9 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
   flex-shrink: 0;
 }
 .popup-email-edit-btn:hover { opacity: 1; }
-.detail-actions { display: flex; gap: 8px; }
+.detail-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .detail-actions a, .detail-actions button {
-  flex: 1; text-align: center; padding: 8px 6px; border-radius: 9px; background: var(--surface-2);
+  flex: 1 1 calc(50% - 4px); min-width: 100px; text-align: center; padding: 8px 6px; border-radius: 9px; background: var(--surface-2);
   border: 1px solid var(--border-solid); color: var(--text); text-decoration: none; font-size: 12px; font-weight: 600;
   font-family: inherit; cursor: pointer;
 }
@@ -2641,6 +2641,34 @@ function buildOutreachMailto(d) {
   return `mailto:${d.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
+// --- "Anruf planen" — legt einen Termin-Vorschlag in Google Calendar an ---
+function formatCalendarDate(date) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}T${pad(date.getHours())}${pad(date.getMinutes())}00`;
+}
+function buildCallPlanUrl(d) {
+  const start = new Date();
+  start.setDate(start.getDate() + 1);
+  start.setHours(10, 0, 0, 0);
+  const end = new Date(start.getTime() + 30 * 60 * 1000);
+  const orgLabel = d.einrichtung || d.name;
+  const details = [
+    d.telefon ? `Telefon: ${d.telefon}` : "",
+    d.ansprechpartner && d.ansprechpartner !== d.name ? `Ansprechpartner: ${d.ansprechpartner}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const location = `${d.strasse || ""}, ${d.plz || ""} ${d.stadt || ""}`.trim();
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: `Anruf: ${orgLabel}`,
+    dates: `${formatCalendarDate(start)}/${formatCalendarDate(end)}`,
+    details,
+    location,
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 // --- Follow-up-Erinnerung ---
 // Die App kann nur erkennen, dass auf "E-Mail" geklickt wurde (der
 // E-Mail-Client des Geräts öffnet sich mit vorausgefülltem Entwurf) —
@@ -2827,7 +2855,10 @@ function showDetail(d) {
   else notesRow.hidden = true;
 
   const actions = [];
-  if (d.telefon) actions.push(`<a href="tel:${esc(d.telefon)}">Anrufen</a>`);
+  if (d.telefon) {
+    actions.push(`<a href="tel:${esc(d.telefon)}">📞 Anrufen</a>`);
+    actions.push(`<a href="${esc(buildCallPlanUrl(d))}" target="_blank" rel="noopener">📅 Anruf planen</a>`);
+  }
   if (d.email) actions.push(`<a class="popup-email-btn" data-id="${d.id}" href="${esc(buildOutreachMailto(d))}">E-Mail</a>`);
   actions.push(`<button type="button" class="popup-route-btn">Route</button>`);
   document.getElementById("d-actions").innerHTML = actions.join("");
@@ -4246,7 +4277,7 @@ setInterval(updateNotificationBell, 5 * 60 * 1000);
         target: "#d-actions",
         title: "Aktionen",
         before: () => ensureDemoDetail(demo, false),
-        text: "„Anrufen“ öffnet die Telefon-App, „E-Mail“ öffnet eine vorformulierte Erstansprache (mit den größten Painpoints aus der Infothek, falls vorhanden) in deinem E-Mail-Programm, „Route“ öffnet die Routenplanung.",
+        text: "„Anrufen“ ruft direkt an, „Anruf planen“ legt stattdessen einen Termin-Vorschlag in Google Calendar an (morgen 10 Uhr, lässt sich dort verschieben). „E-Mail“ öffnet eine vorformulierte Erstansprache (mit den größten Painpoints aus der Infothek, falls vorhanden) in deinem E-Mail-Programm, „Route“ öffnet die Routenplanung.",
       },
       {
         target: "#route-planner",
