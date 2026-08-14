@@ -1381,12 +1381,14 @@ function recordEmailSent(doctorId) {
   const map = getSentEmails();
   map[doctorId] = { sentAt: Date.now() };
   saveSentEmails(map);
+  unmarkFollowUpSeen(doctorId);
   updateNotificationBell();
 }
 function dismissFollowUp(doctorId) {
   const map = getSentEmails();
   delete map[doctorId];
   saveSentEmails(map);
+  unmarkFollowUpSeen(doctorId);
   updateNotificationBell();
   renderNotificationPanel();
 }
@@ -1397,6 +1399,34 @@ function getDueFollowUps() {
     .filter(([, rec]) => now - rec.sentAt >= FOLLOWUP_DELAY_MS)
     .map(([id, rec]) => ({ doctorId: Number(id), sentAt: rec.sentAt }))
     .filter((r) => AERZTE_DATA.some((d) => d.id === r.doctorId));
+}
+
+// Klickt man auf eine Erinnerung in der Glocke, soll der rote Punkt
+// verschwinden, ohne die Erinnerung selbst gleich zu löschen (das bleibt
+// "Follow-up senden"/"×" vorbehalten) — dafür separat gemerkt, welche
+// Praxis-IDs schon "gesehen" wurden.
+function getSeenFollowUps() {
+  try {
+    return JSON.parse(localStorage.getItem("medipulse_followup_seen") || "{}");
+  } catch {
+    return {};
+  }
+}
+function saveSeenFollowUps(seen) {
+  localStorage.setItem("medipulse_followup_seen", JSON.stringify(seen));
+}
+function markFollowUpSeen(doctorId) {
+  const seen = getSeenFollowUps();
+  if (seen[doctorId]) return;
+  seen[doctorId] = true;
+  saveSeenFollowUps(seen);
+  updateNotificationBell();
+}
+function unmarkFollowUpSeen(doctorId) {
+  const seen = getSeenFollowUps();
+  if (!(doctorId in seen)) return;
+  delete seen[doctorId];
+  saveSeenFollowUps(seen);
 }
 function buildFollowUpEmail(d) {
   const orgLabel = d.einrichtung || d.name;
@@ -1419,10 +1449,12 @@ function buildFollowUpMailto(d) {
   return `mailto:${d.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 function updateNotificationBell() {
-  document.getElementById("notif-dot").hidden = getDueFollowUps().length === 0;
+  const seen = getSeenFollowUps();
+  document.getElementById("notif-dot").hidden = getDueFollowUps().every((r) => seen[r.doctorId]);
 }
 function renderNotificationPanel() {
   const due = getDueFollowUps().sort((a, b) => a.sentAt - b.sentAt);
+  const seen = getSeenFollowUps();
   const list = document.getElementById("notif-list");
   if (!due.length) {
     list.innerHTML = `<div class="infothek-empty">Keine offenen Follow-ups.</div>`;
@@ -1432,8 +1464,8 @@ function renderNotificationPanel() {
     .map((r) => {
       const d = AERZTE_DATA.find((x) => x.id === r.doctorId);
       return `
-      <div class="notif-row">
-        <div class="notif-info">
+      <div class="notif-row ${seen[r.doctorId] ? "notif-row-seen" : ""}">
+        <div class="notif-info" data-id="${d.id}">
           <div class="notif-name">${escapeHtml(d.name)}</div>
           <div class="notif-sub">E-Mail gesendet am ${new Date(r.sentAt).toLocaleDateString("de-DE")}</div>
         </div>
@@ -1929,6 +1961,11 @@ document.addEventListener("click", (e) => {
   if (followUpBtn) dismissFollowUp(Number(followUpBtn.dataset.id));
   const deleteFollowUpBtn = e.target.closest(".notif-delete-btn");
   if (deleteFollowUpBtn) dismissFollowUp(Number(deleteFollowUpBtn.dataset.id));
+  const notifInfo = e.target.closest(".notif-info");
+  if (notifInfo && !followUpBtn && !deleteFollowUpBtn) {
+    markFollowUpSeen(Number(notifInfo.dataset.id));
+    notifInfo.closest(".notif-row").classList.add("notif-row-seen");
+  }
 });
 document.addEventListener("click", (e) => {
   // composedPath() statt e.target: Klicks, die das Panel per innerHTML

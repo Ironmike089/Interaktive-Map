@@ -128,7 +128,8 @@ html, body {
   border-bottom: 1px solid var(--border);
 }
 .notif-row:last-child { border-bottom: none; }
-.notif-info { min-width: 0; }
+.notif-info { min-width: 0; cursor: pointer; }
+.notif-row-seen .notif-name, .notif-row-seen .notif-sub { opacity: 0.55; }
 .notif-name { font-size: 12.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .notif-sub { font-size: 10.5px; color: var(--text-dim); margin-top: 2px; }
 .notif-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }

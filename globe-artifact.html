@@ -188,7 +188,8 @@ h1, h2, h3 { font-family: "Archivo", sans-serif; text-wrap: balance; margin: 0; 
   padding: 8px 0; border-bottom: 1px solid var(--border-solid);
 }
 .notif-row:last-child { border-bottom: none; }
-.notif-info { min-width: 0; }
+.notif-info { min-width: 0; cursor: pointer; }
+.notif-row-seen .notif-name, .notif-row-seen .notif-sub { opacity: 0.55; }
 .notif-name {
   font-size: 12.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-family: "Archivo", sans-serif;
@@ -2605,12 +2606,14 @@ function recordEmailSent(doctorId) {
   const map = getSentEmails();
   map[doctorId] = { sentAt: Date.now() };
   saveSentEmails(map);
+  unmarkFollowUpSeen(doctorId);
   updateNotificationBell();
 }
 function dismissFollowUp(doctorId) {
   const map = getSentEmails();
   delete map[doctorId];
   saveSentEmails(map);
+  unmarkFollowUpSeen(doctorId);
   updateNotificationBell();
   renderNotificationPanel();
 }
@@ -2621,6 +2624,30 @@ function getDueFollowUps() {
     .filter(([, rec]) => now - rec.sentAt >= FOLLOWUP_DELAY_MS)
     .map(([id, rec]) => ({ doctorId: Number(id), sentAt: rec.sentAt }))
     .filter((r) => AERZTE_DATA.some((d) => d.id === r.doctorId));
+}
+
+function getSeenFollowUps() {
+  try {
+    return JSON.parse(localStorage.getItem("medipulse_followup_seen") || "{}");
+  } catch {
+    return {};
+  }
+}
+function saveSeenFollowUps(seen) {
+  localStorage.setItem("medipulse_followup_seen", JSON.stringify(seen));
+}
+function markFollowUpSeen(doctorId) {
+  const seen = getSeenFollowUps();
+  if (seen[doctorId]) return;
+  seen[doctorId] = true;
+  saveSeenFollowUps(seen);
+  updateNotificationBell();
+}
+function unmarkFollowUpSeen(doctorId) {
+  const seen = getSeenFollowUps();
+  if (!(doctorId in seen)) return;
+  delete seen[doctorId];
+  saveSeenFollowUps(seen);
 }
 function buildFollowUpEmail(d) {
   const orgLabel = d.einrichtung || d.name;
@@ -2643,10 +2670,12 @@ function buildFollowUpMailto(d) {
   return `mailto:${d.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 function updateNotificationBell() {
-  document.getElementById("notif-dot").hidden = getDueFollowUps().length === 0;
+  const seen = getSeenFollowUps();
+  document.getElementById("notif-dot").hidden = getDueFollowUps().every((r) => seen[r.doctorId]);
 }
 function renderNotificationPanel() {
   const due = getDueFollowUps().sort((a, b) => a.sentAt - b.sentAt);
+  const seen = getSeenFollowUps();
   const list = document.getElementById("notif-list");
   if (!due.length) {
     list.innerHTML = `<div class="infothek-empty">Keine offenen Follow-ups.</div>`;
@@ -2656,8 +2685,8 @@ function renderNotificationPanel() {
     .map((r) => {
       const d = AERZTE_DATA.find((x) => x.id === r.doctorId);
       return `
-      <div class="notif-row">
-        <div class="notif-info">
+      <div class="notif-row ${seen[r.doctorId] ? "notif-row-seen" : ""}">
+        <div class="notif-info" data-id="${d.id}">
           <div class="notif-name">${esc(d.name)}</div>
           <div class="notif-sub">E-Mail gesendet am ${new Date(r.sentAt).toLocaleDateString("de-DE")}</div>
         </div>
@@ -3937,6 +3966,11 @@ document.addEventListener("click", (e) => {
   if (followUpBtn) dismissFollowUp(Number(followUpBtn.dataset.id));
   const deleteFollowUpBtn = e.target.closest(".notif-delete-btn");
   if (deleteFollowUpBtn) dismissFollowUp(Number(deleteFollowUpBtn.dataset.id));
+  const notifInfo = e.target.closest(".notif-info");
+  if (notifInfo && !followUpBtn && !deleteFollowUpBtn) {
+    markFollowUpSeen(Number(notifInfo.dataset.id));
+    notifInfo.closest(".notif-row").classList.add("notif-row-seen");
+  }
 });
 
 renderList();
