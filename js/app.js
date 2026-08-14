@@ -3128,11 +3128,23 @@ updateUserBadge();
     if (renderFn) renderFn();
   }
 
+  // Zentriert die Praxis nicht in der Bildmitte, sondern im oberen Fünftel
+  // der Karte — sonst bleibt für ein volles Popup (Größe, Umsatz, Kontakt,
+  // Aktionen, Infothek) nach unten nur die halbe Kartenhöhe Platz, und der
+  // untere Teil landet unsichtbar unter dem Bildschirmrand (die Seite selbst
+  // scrollt nicht).
+  function centerDoctorForPopup(demo) {
+    map.jumpTo({ center: [demo.lng, demo.lat], zoom: 10 });
+    const c = map.getContainer();
+    const newCenter = map.unproject([c.clientWidth / 2, c.clientHeight * 0.8]);
+    map.jumpTo({ center: newCenter, zoom: 10 });
+  }
+
   function ensureDemoPopup(demo, expandInfothek) {
     if (!demo) return;
     closeAllOverlayPanels();
     if (expandInfothek) infothekExpandedFor = demo.id;
-    map.jumpTo({ center: [demo.lng, demo.lat], zoom: 10 });
+    centerDoctorForPopup(demo);
     openDoctorPopup(demo, [demo.lng, demo.lat]);
   }
 

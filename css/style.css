@@ -1110,6 +1110,8 @@ html, body {
   border-radius: 10px;
   padding: 14px 16px;
   font-family: inherit;
+  max-height: 70vh;
+  overflow-y: auto;
 }
 .maplibregl-popup-tip { border-top-color: var(--panel) !important; border-bottom-color: var(--panel) !important; }
 .popup-header-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
